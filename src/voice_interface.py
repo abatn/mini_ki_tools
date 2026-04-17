@@ -1,0 +1,55 @@
+# Voice Interface for Agent
+# Implements Speech-to-Text and Text-to-Speech functionality
+
+import os
+import tempfile
+from faster_whisper import WhisperModel
+import pyttsx3
+from typing import Optional
+
+
+class VoiceInterface:
+    def __init__(self):
+        # Initialize Whisper model for speech-to-text
+        # Using small model for faster inference
+        self.whisper_model = WhisperModel("small", device="cpu", compute_type="float32")
+        
+        # Initialize pyttsx3 for text-to-speech
+        self.tts_engine = pyttsx3.init()
+        
+        # Set voice properties
+n    def transcribe_audio(self, audio_file_path: str) -> str:
+        """
+        Convert speech to text using Whisper
+        """
+        try:
+            segments, info = self.whisper_model.transcribe(audio_file_path, beam_size=5)
+            text = " ".join([segment.text for segment in segments])
+            return text
+        except Exception as e:
+            print(f"Error in speech-to-text: {e}")
+            return ""
+
+    def speak_text(self, text: str) -> str:
+        """
+        Convert text to speech
+        """
+        try:
+            # Create a temporary file for the audio
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
+                tmp_path = tmp_file.name
+            
+            # Generate audio
+            self.tts_engine.save_to_file(text, tmp_path)
+            self.tts_engine.runAndWait()
+            
+            return tmp_path
+        except Exception as e:
+            print(f"Error in text-to-speech: {e}")
+            return ""
+
+    def cleanup(self):
+        """
+        Clean up resources
+        """
+        pass

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Job Scheduler</title>
+</head>
+<body>
+    <h1>Job List</h1>
+    <ul id="job-list"></ul>
+    <form id="add-job-form">
+        Job ID: <input type="text" name="id"><br>
+        Function: <input type="text" name="func"><br>
+        <button type="submit">Add Job</button>
+    </form>
+    <script>
+        async function fetchJobs() {
+            const response = await fetch('/api/schedule/list');
+            const data = await response.json();
+            const jobList = document.getElementById('job-list');
+            jobList.innerHTML = '';
+            data.jobs.forEach(job => {
+                const li = document.createElement('li');
+                li.textContent = job;
+                jobList.appendChild(li);
+            });
+        }
+
+        async function addJob(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const id = formData.get('id');
+            const func = formData.get('func');
+            await fetch('/api/schedule/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id, func })
+            });
+            fetchJobs();
+        }
+
+        document.getElementById('add-job-form').addEventListener('submit', addJob);
+        fetchJobs();
+    </script>
+</body>
+</html>
