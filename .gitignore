@@ -1,0 +1,24 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# IDEs & Editoren
+.vscode/
+.continue/
+*.swp
+*.swo
+
+# Logs & temporäre Dateien
+logs/
+nohup.out
+~/
+
+# Docker (optional - nur wenn nicht committed werden soll)
+# Dockerfile ist committed, aber nicht die Build-Artifakte
+.dockerignore
+
+# Config mit Secrets (falls vorhanden)
+config/secrets.json
+config/.env
