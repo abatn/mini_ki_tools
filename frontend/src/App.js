@@ -7,10 +7,13 @@ function App() {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [tools, setTools] = useState([]);
+  const [workspaceConfig, setWorkspaceConfig] = useState(null);
+  const [llmInfo, setLlmInfo] = useState(null);
 
   useEffect(() => {
-    // Load available tools
+    // Load available tools and config
     loadTools();
+    loadHealthInfo();
   }, []);
 
   const loadTools = async () => {
@@ -19,6 +22,16 @@ function App() {
       setTools(response.data);
     } catch (error) {
       console.error('Error loading tools:', error);
+    }
+  };
+
+  const loadHealthInfo = async () => {
+    try {
+      const response = await axios.get('http://localhost:8000/health');
+      setWorkspaceConfig(response.data.workspace);
+      setLlmInfo(response.data.llm);
+    } catch (error) {
+      console.error('Error loading health info:', error);
     }
   };
 
@@ -97,6 +110,27 @@ function App() {
             {isLoading ? 'Sending...' : 'Send'}
           </button>
         </div>
+      </div>
+
+      <div className="config-section">
+        <h2>Configuration</h2>
+        {workspaceConfig && (
+          <div className="config-card">
+            <h3>Workspace</h3>
+            <p><strong>Path:</strong> {workspaceConfig.workspace_path}</p>
+            <p><strong>Read-only:</strong> {workspaceConfig.read_only ? 'Yes' : 'No'}</p>
+            <p><strong>Max File Size:</strong> {workspaceConfig.max_file_size_mb}MB</p>
+            <p><strong>Execution Timeout:</strong> {workspaceConfig.execution_timeout}s</p>
+          </div>
+        )}
+        {llmInfo && (
+          <div className="config-card">
+            <h3>LLM Provider</h3>
+            <p><strong>Provider:</strong> {llmInfo.provider}</p>
+            <p><strong>Model:</strong> {llmInfo.model}</p>
+            <p><strong>Available:</strong> {llmInfo.available ? 'Yes' : 'No'}</p>
+          </div>
+        )}
       </div>
 
       <div className="tools-section">

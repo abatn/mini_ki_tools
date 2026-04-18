@@ -12,13 +12,19 @@ interface AgentState {
     currentFile: string | undefined;
     cursorPosition: vscode.Position | undefined;
     selection: vscode.Selection | undefined;
+    workspacePath: string | undefined;
+    llmProvider: string | undefined;
+    llmModel: string | undefined;
 }
 
 const state: AgentState = {
     connected: false,
     currentFile: undefined,
     cursorPosition: undefined,
-    selection: undefined
+    selection: undefined,
+    workspacePath: undefined,
+    llmProvider: undefined,
+    llmModel: undefined
 };
 
 export function activate(context: vscode.ExtensionContext) {
@@ -93,7 +99,17 @@ async function startAgent(): Promise<void> {
         // Check if server is reachable
         const response = await axios.get(`${serverUrl}/health`, { timeout: 5000 });
         state.connected = true;
-        vscode.window.showInformationMessage('Mini KI Tools connected to server');
+        
+        // Get workspace and LLM info
+        if (response.data.workspace) {
+            state.workspacePath = response.data.workspace.workspace_path;
+        }
+        if (response.data.llm) {
+            state.llmProvider = response.data.llm.provider;
+            state.llmModel = response.data.llm.model;
+        }
+        
+        vscode.window.showInformationMessage(`Mini KI Tools connected to server (Workspace: ${state.workspacePath}, LLM: ${state.llmProvider}/${state.llmModel})`);
         updateStatusBar();
     } catch (error) {
         state.connected = false;
@@ -174,6 +190,8 @@ function getWebviewHtml(): string {
         .status { padding: 5px 10px; border-radius: 4px; font-size: 12px; }
         .status.connected { background: #4caf50; color: white; }
         .status.disconnected { background: #f44336; color: white; }
+        .config-info { font-size: 12px; color: #666; margin-bottom: 10px; padding: 8px; background: #f5f5f5; border-radius: 4px; }
+        .config-info span { margin-right: 15px; }
         .chat-container { border: 1px solid #ddd; border-radius: 8px; height: 400px; display: flex; flex-direction: column; }
         .messages { flex: 1; overflow-y: auto; padding: 10px; }
         .message { margin: 10px 0; padding: 10px; border-radius: 8px; }
@@ -192,6 +210,10 @@ function getWebviewHtml(): string {
         <span class="status ${state.connected ? 'connected' : 'disconnected'}" style="margin-left: 10px;">
             ${state.connected ? 'Connected' : 'Disconnected'}
         </span>
+    </div>
+    <div class="config-info">
+        <span><strong>Workspace:</strong> ${state.workspacePath || 'Not configured'}</span>
+        <span><strong>LLM:</strong> ${state.llmProvider || 'N/A'}/${state.llmModel || 'N/A'}</span>
     </div>
     <div class="file-info">
         Current File: ${state.currentFile || 'None'}

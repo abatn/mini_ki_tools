@@ -1,8 +1,8 @@
 {
   "name": "mini-ki-tools",
   "displayName": "Mini KI Tools",
-  "description": "AI-powered coding assistant with autonomous planning, collaboration, and sandboxing",
-  "version": "1.0.0",
+  "description": "AI-powered coding assistant - runs directly in VS Code without external container",
+  "version": "2.0.0",
   "publisher": "mini-ki-tools",
   "engines": {
     "vscode": "^1.75.0"
@@ -12,6 +12,8 @@
     "Programming Languages"
   ],
   "activationEvents": [
+    "onCommand:mini-ki-tools.start",
+    "onCommand:mini-ki-tools.chat",
     "onWebviewPanel:mini-ki-tools-panel"
   ],
   "main": "./out/extension.js",
@@ -20,7 +22,12 @@
       {
         "command": "mini-ki-tools.start",
         "title": "Mini KI Tools: Start Agent",
-        "description": "Start the Mini KI Tools agent server"
+        "description": "Start the Mini KI Tools agent (runs in VS Code)"
+      },
+      {
+        "command": "mini-ki-tools.stop",
+        "title": "Mini KI Tools: Stop Agent",
+        "description": "Stop the Mini KI Tools agent"
       },
       {
         "command": "mini-ki-tools.chat",
@@ -41,6 +48,16 @@
         "command": "mini-ki-tools.refactor",
         "title": "Mini KI Tools: Refactor",
         "description": "Refactor selected code"
+      },
+      {
+        "command": "mini-ki-tools.inlineComplete",
+        "title": "Mini KI Tools: Inline Completion",
+        "description": "Get inline code completion"
+      },
+      {
+        "command": "mini-ki-tools.setupPython",
+        "title": "Mini KI Tools: Setup Python Environment",
+        "description": "Setup bundled Python environment for the extension"
       }
     ],
     "menus": {
@@ -49,32 +66,67 @@
           "command": "mini-ki-tools.chat",
           "when": "editorHasSelection",
           "group": "mini-ki-tools"
+        },
+        {
+          "command": "mini-ki-tools.analyze",
+          "when": "editorHasSelection",
+          "group": "mini-ki-tools"
+        },
+        {
+          "command": "mini-ki-tools.refactor",
+          "when": "editorHasSelection",
+          "group": "mini-ki-tools"
         }
       ],
       "commandPalette": [
         {
           "command": "mini-ki-tools.start",
           "when": "!mini-ki-tools:connected"
+        },
+        {
+          "command": "mini-ki-tools.setupPython",
+          "when": "!mini-ki-tools:pythonReady"
         }
       ]
     },
     "configuration": {
       "title": "Mini KI Tools",
       "properties": {
-        "mini-ki-tools.serverUrl": {
+        "mini-ki-tools.pythonPath": {
           "type": "string",
-          "default": "http://localhost:8000",
-          "description": "URL of the Mini KI Tools server"
+          "default": "${extensionPath}/python/venv/bin/python",
+          "description": "Path to bundled Python interpreter"
+        },
+        "mini-ki-tools.llmUrl": {
+          "type": "string",
+          "default": "${env:LLM_URL}",
+          "description": "LLM server URL (uses LLM_URL env var by default)"
+        },
+        "mini-ki-tools.llmModel": {
+          "type": "string",
+          "default": "${env:LLM_MODEL}",
+          "description": "LLM model name (uses LLM_MODEL env var by default)"
+        },
+        "mini-ki-tools.llmProvider": {
+          "type": "string",
+          "default": "ollama",
+          "enum": ["ollama", "openai", "anthropic"],
+          "description": "LLM provider type"
         },
         "mini-ki-tools.autoStart": {
           "type": "boolean",
           "default": false,
-          "description": "Auto-start server on extension activation"
+          "description": "Auto-start agent on extension activation"
         },
         "mini-ki-tools.maxTokens": {
           "type": "number",
           "default": 4096,
           "description": "Maximum tokens for responses"
+        },
+        "mini-ki-tools.workspacePath": {
+          "type": "string",
+          "default": "${workspaceFolder}",
+          "description": "Workspace path for agent files"
         }
       }
     }
@@ -83,7 +135,8 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "test": "node ./out/test/runTest.js"
+    "test": "node ./out/test/runTest.js",
+    "bundle-python": "bash ./bundle_python.sh"
   },
   "devDependencies": {
     "@types/node": "^16.18.0",

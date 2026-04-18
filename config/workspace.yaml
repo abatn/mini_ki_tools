@@ -1,0 +1,41 @@
+# Workspace Konfiguration
+# Definiert den Arbeitsbereich für den Agenten mit Lese-, Schreib- und Ausführungsrechten
+#
+# Konfiguration kann erfolgen über:
+#   1. Umgebungsvariable: WORKSPACE_PATH=/path/to/workspace
+#   2. Diese Konfigurationsdatei: config/workspace.yaml
+#
+# Der Docker-Container mountet dieses Verzeichnis automatisch.
+# Der TAOLoop und alle Tools (read_file, write_file, execute_code) arbeiten
+# ausschließlich innerhalb dieses Workspace-Pfades.
+
+# Workspace-Pfad (kann durch WORKSPACE_PATH Umgebungsvariable überschrieben werden)
+# Standard: Aktuelles Arbeitsverzeichnis
+workspace_path: "/workspace"
+
+# Optional: Nur-Lese-Modus (keine Schreib- oder Ausführungsrechte)
+read_only: false
+
+# Erlaubte Dateierweiterungen für Ausführung
+allowed_extensions:
+  - .py
+  - .js
+  - .sh
+  - .txt
+  - .json
+  - .yaml
+  - .yml
+  - .md
+
+# Verzeichnisse, auf die der Agent NICHT zugreifen darf
+blocked_paths:
+  - /etc
+  - /root
+  - /home/*/.ssh
+  - /home/*/.aws
+
+# Maximale Dateigröße für Leseoperationen (in MB)
+max_file_size: 10
+
+# Timeout für Code-Ausführung (in Sekunden)
+execution_timeout: 30

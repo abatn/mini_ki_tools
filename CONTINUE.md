@@ -99,6 +99,42 @@ python src/agent_server.py
     - Module: `sandbox_manager.py`
     - Description: Jede Tool-Ausführung in eigenem Docker-Container mit Zeitlimit 5min, CPU/RAM-Limits, read-only System.
 
+15. **Workspace Configuration**
+    - Module: `workspace.py`
+    - Config: `config/workspace.yaml`
+    - Description: Benutzerdefinierter Workspace-Pfad mit Lese-, Schreib- und Ausführungsrechten. Konfiguration über Umgebungsvariable `WORKSPACE_PATH` oder Konfigurationsdatei. Alle Tools (read_file, write_file, execute_code) arbeiten ausschließlich innerhalb des Workspace-Pfades. Features:
+      - Pfad-Validierung gegen blocked_paths (/etc, /root, ~/.ssh, ~/.aws)
+      - Nur-Lesen-Modus (read_only)
+      - Maximale Dateigröße (10MB)
+      - Execution Timeout (30s)
+      - Automatischer Docker-Mount
+
+16. **Fallback LLM Provider**
+    - Module: `llm_provider.py`
+    - Description: Automatischer Fallback zwischen LLM-Providern bei Ausfall. Reihenfolge: Ollama → OpenAI → Anthropic → OpenRouter. Konfiguration über Umgebungsvariablen:
+      - `LLM_URL`: API-URL
+      - `LLM_MODEL`: Modellname
+      - `LLM_PROVIDER`: Provider-Typ
+      - `LLM_API_KEY`: API-Schlüssel
+
+## API Endpoints
+
+### Health & Configuration
+- `GET /health` - Health-Check mit Workspace- und LLM-Info
+- `GET /workspace/config` - Workspace-Konfiguration abrufen
+- `POST /workspace/config` - Workspace-Konfiguration aktualisieren
+
+### Docker Usage
+```bash
+# Workspace mounten
+docker run -d -p 8000:8000 \
+  -v /host/path:/workspace \
+  -e WORKSPACE_PATH=/workspace \
+  -e LLM_URL="http://host:11434" \
+  -e LLM_MODEL="llama3.2" \
+  --name mini-ki-container mini-ki-tools
+```
+
 15. **VS Code Extension**
     - Verzeichnis: `vscode-extension/`
     - Beschreibung: VS Code Extension für direkte Integration mit dem Agent-Server
