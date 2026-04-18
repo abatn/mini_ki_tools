@@ -1,0 +1,100 @@
+{
+  "servers": [
+    {
+      "name": "github",
+      "description": "GitHub integration - issues, PRs, repos",
+      "category": "development",
+      "provider": "microsoft",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {},
+      "installed": false,
+      "version": "latest",
+      "repo_url": "https://github.com/modelcontextprotocol/servers/tree/main/github"
+    },
+    {
+      "name": "slack",
+      "description": "Slack integration - channels, messages",
+      "category": "communication",
+      "provider": "modelcontextprotocol",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-slack"],
+      "env": {},
+      "installed": false,
+      "version": "latest",
+      "repo_url": "https://github.com/modelcontextprotocol/servers/tree/main/slack"
+    },
+    {
+      "name": "postgres",
+      "description": "PostgreSQL database integration",
+      "category": "database",
+      "provider": "modelcontextprotocol",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {},
+      "installed": false,
+      "version": "latest",
+      "repo_url": "https://github.com/modelcontextprotocol/servers/tree/main/postgres"
+    },
+    {
+      "name": "filesystem",
+      "description": "Local filesystem access",
+      "category": "development",
+      "provider": "modelcontextprotocol",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+      "env": {},
+      "installed": false,
+      "version": "latest",
+      "repo_url": "https://github.com/modelcontextprotocol/servers/tree/main/filesystem"
+    },
+    {
+      "name": "brave-search",
+      "description": "Brave web search",
+      "category": "search",
+      "provider": "modelcontextprotocol",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {},
+      "installed": false,
+      "version": "latest",
+      "repo_url": "https://github.com/modelcontextprotocol/servers/tree/main/brave-search"
+    },
+    {
+      "name": "puppeteer",
+      "description": "Browser automation via Puppeteer",
+      "category": "automation",
+      "provider": "modelcontextprotocol",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
+      "env": {},
+      "installed": false,
+      "version": "latest",
+      "repo_url": "https://github.com/modelcontextprotocol/servers/tree/main/puppeteer"
+    },
+    {
+      "name": "aws-kb-retrieval",
+      "description": "AWS Knowledge Base retrieval",
+      "category": "search",
+      "provider": "modelcontextprotocol",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-aws-kb-retrieval"],
+      "env": {},
+      "installed": false,
+      "version": "latest",
+      "repo_url": "https://github.com/modelcontextprotocol/servers/tree/main/aws-kb-retrieval"
+    },
+    {
+      "name": "google-maps",
+      "description": "Google Maps integration",
+      "category": "utilities",
+      "provider": "modelcontextprotocol",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-google-maps"],
+      "env": {},
+      "installed": false,
+      "version": "latest",
+      "repo_url": "https://github.com/modelcontextprotocol/servers/tree/main/google-maps"
+    }
+  ]
+}

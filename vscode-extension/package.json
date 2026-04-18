@@ -1,0 +1,98 @@
+{
+  "name": "mini-ki-tools",
+  "displayName": "Mini KI Tools",
+  "description": "AI-powered coding assistant with autonomous planning, collaboration, and sandboxing",
+  "version": "1.0.0",
+  "publisher": "mini-ki-tools",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "AI",
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onWebviewPanel:mini-ki-tools-panel"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "mini-ki-tools.start",
+        "title": "Mini KI Tools: Start Agent",
+        "description": "Start the Mini KI Tools agent server"
+      },
+      {
+        "command": "mini-ki-tools.chat",
+        "title": "Mini KI Tools: Chat",
+        "description": "Open chat with AI assistant"
+      },
+      {
+        "command": "mini-ki-tools.applyChanges",
+        "title": "Mini KI Tools: Apply Changes",
+        "description": "Apply code changes from AI"
+      },
+      {
+        "command": "mini-ki-tools.analyze",
+        "title": "Mini KI Tools: Analyze Code",
+        "description": "Analyze current file"
+      },
+      {
+        "command": "mini-ki-tools.refactor",
+        "title": "Mini KI Tools: Refactor",
+        "description": "Refactor selected code"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "mini-ki-tools.chat",
+          "when": "editorHasSelection",
+          "group": "mini-ki-tools"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "mini-ki-tools.start",
+          "when": "!mini-ki-tools:connected"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Mini KI Tools",
+      "properties": {
+        "mini-ki-tools.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:8000",
+          "description": "URL of the Mini KI Tools server"
+        },
+        "mini-ki-tools.autoStart": {
+          "type": "boolean",
+          "default": false,
+          "description": "Auto-start server on extension activation"
+        },
+        "mini-ki-tools.maxTokens": {
+          "type": "number",
+          "default": 4096,
+          "description": "Maximum tokens for responses"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "^16.18.0",
+    "@types/vscode": "^1.75.0",
+    "@types/mocha": "^10.0.0",
+    "@vscode/test-electron": "^2.3.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  }
+}

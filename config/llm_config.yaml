@@ -1,0 +1,34 @@
+# LLM Provider Konfiguration
+# Zentrale Konfiguration für alle LLM-Anbieter
+
+# Standard-Provider (ollama, openai, anthropic, openrouter)
+default_provider: ollama
+
+# Provider-spezifische Konfiguration
+providers:
+  ollama:
+    url: "http://localhost:11434"
+    model: "llama3.2"
+    timeout: 30
+  
+  openai:
+    api_key: "${OPENAI_API_KEY}"
+    model: "gpt-4"
+    base_url: "https://api.openai.com/v1"
+    timeout: 60
+  
+  anthropic:
+    api_key: "${ANTHROPIC_API_KEY}"
+    model: "claude-3-sonnet-20240229"
+    timeout: 60
+  
+  openrouter:
+    api_key: "${OPENROUTER_API_KEY}"
+    model: "openai/gpt-3.5-turbo"
+    timeout: 60
+
+# Globale Einstellungen
+settings:
+  max_retries: 3
+  retry_delay: 1
+  fallback_to_ollama: true

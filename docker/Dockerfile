@@ -17,4 +17,4 @@ RUN mkdir -p logs data src
 EXPOSE 8000
 
 # Run the application
-CMD ["python", "agent_server.py"]
+CMD ["python", "src/agent_server.py"]

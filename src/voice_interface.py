@@ -18,7 +18,10 @@ class VoiceInterface:
         self.tts_engine = pyttsx3.init()
         
         # Set voice properties
-n    def transcribe_audio(self, audio_file_path: str) -> str:
+        self.tts_engine.setProperty('rate', 150)
+        self.tts_engine.setProperty('volume', 0.9)
+    
+    def transcribe_audio(self, audio_file_path: str) -> str:
         """
         Convert speech to text using Whisper
         """

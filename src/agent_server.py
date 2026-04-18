@@ -7,12 +7,13 @@ import uvicorn
 import os
 import json
 import logging
-from src.agent import Agent
-from src.tools import ToolRegistry
-from src.git_integration import GitIntegration
-from src.long_term_memory import store_memory, search_memory
-from src.batch_processor import BatchProcessor
+from agent import Agent
+from tools import ToolRegistry
+from git_integration import GitIntegration
+from long_term_memory import store_memory, search_memory
+from batch_processor import BatchProcessor
 from apscheduler.schedulers.background import BackgroundScheduler
+from .llm_provider import get_llm_manager, LLMProviderFactory
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -157,7 +158,7 @@ class MemoryRequest(BaseModel):
 async def store_memory_endpoint(request: MemoryRequest):
     """Store a memory in the vector database"""
     try:
-        from src.embedding import get_embedding
+        from embedding import get_embedding
         embedding = get_embedding(request.content)
         memory_id = store_memory(embedding, {"content": request.content, **request.metadata})
         return {"status": "success", "memory_id": memory_id}
@@ -170,8 +171,8 @@ async def search_memory_endpoint(request: dict):
     """Search memories in the vector database"""
     try:
         query = request.get("query", "")
-        from src.embedding import get_embedding
-        from src.long_term_memory import memory_collection
+        from embedding import get_embedding
+        from long_term_memory import memory_collection
         query_embedding = get_embedding(query)
         results = memory_collection.query(query_embeddings=[query_embedding], n_results=3)
         return {"status": "success", "results": results}
@@ -240,6 +241,417 @@ async def schedule_remove_job(request: dict):
     job_id = request.get("job_id")
     scheduler.remove_job(job_id)
     return {"status": "success", "job_id": job_id}
+
+# ============ Collaboration WebSocket Endpoints ============
+from fastapi import WebSocket
+from collaboration import handle_collab_connection, collaboration_manager
+import uuid
+
+@app.websocket("/ws/collab")
+async def websocket_collab(websocket: WebSocket):
+    """WebSocket endpoint for real-time collaboration"""
+    user_id = f"user_{uuid.uuid4().hex[:6]}"
+    await handle_collab_connection(websocket, user_id)
+
+@app.get("/api/collab/rooms")
+async def list_collab_rooms():
+    """List all active collaboration rooms"""
+    return {"rooms": collaboration_manager.list_rooms()}
+
+# ============ Config Export/Import Endpoints ============
+from config_exporter import ConfigExporter, ConfigImporter
+
+@app.get("/api/config/export")
+async def export_config():
+    """Export current configuration to .agentconfig"""
+    exporter = ConfigExporter()
+    return exporter.export()
+
+@app.post("/api/config/import")
+async def import_config(request: dict):
+    """Import configuration from .agentconfig file"""
+    input_path = request.get("path")
+    merge = request.get("merge", True)
+    
+    if not input_path:
+        raise HTTPException(status_code=400, detail="path required")
+    
+    importer = ConfigImporter()
+    return importer.import_config(input_path, merge)
+
+# ============ Sandbox Endpoints ============
+from sandbox_manager import get_sandbox_manager
+
+@app.post("/api/sandbox/execute")
+async def sandbox_execute(request: dict):
+    """Execute command in isolated sandbox"""
+    command = request.get("command")
+    files = request.get("files", {})
+    env_vars = request.get("env_vars", {})
+    user_id = request.get("user_id", "default")
+    
+    if not command:
+        raise HTTPException(status_code=400, detail="command required")
+    
+    manager = get_sandbox_manager()
+    result = manager.execute(command, files, env_vars, user_id)
+    
+    return {
+        "sandbox_id": result.sandbox_id,
+        "success": result.success,
+        "output": result.output,
+        "error": result.error,
+        "exit_code": result.exit_code,
+        "duration": result.duration
+    }
+
+@app.get("/api/sandbox/active")
+async def sandbox_list():
+    """List active sandboxes"""
+    manager = get_sandbox_manager()
+    return {"sandboxes": manager.get_active_sandboxes()}
+
+@app.delete("/api/sandbox/{sandbox_id}")
+async def sandbox_kill(sandbox_id: str):
+    """Kill a sandbox"""
+    manager = get_sandbox_manager()
+    success = manager.kill_sandbox(sandbox_id)
+    return {"success": success}
+
+# ============ Audit Log Endpoints ============
+from audit_logger import get_audit_logger, log_action
+
+@app.post("/api/audit/log")
+async def audit_log(request: dict):
+    """Log an action to audit"""
+    user_id = request.get("user_id", "anonymous")
+    action_type = request.get("action_type", "unknown")
+    
+    entry_id = log_action(
+        user_id=user_id,
+        action_type=action_type,
+        file_path=request.get("file_path"),
+        prompt=request.get("prompt"),
+        result=request.get("result"),
+        success=request.get("success", True),
+        metadata=request.get("metadata", {})
+    )
+    
+    return {"status": "success", "entry_id": entry_id}
+
+@app.get("/api/audit/search")
+async def audit_search(
+    user_id: str = None,
+    action_type: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    limit: int = 100
+):
+    """Search audit logs"""
+    logger = get_audit_logger()
+    entries = logger.search(user_id, action_type, start_date, end_date, limit)
+    return {
+        "count": len(entries),
+        "entries": [e.to_dict() for e in entries]
+    }
+
+@app.get("/api/audit/export")
+async def audit_export(
+    path: str = None,
+    format: str = "json",
+    start_date: str = None,
+    end_date: str = None
+):
+    """Export audit logs"""
+    logger = get_audit_logger()
+    return logger.export(path, format, start_date, end_date)
+
+@app.get("/api/audit/stats")
+async def audit_stats(days: int = 7):
+    """Get audit statistics"""
+    logger = get_audit_logger()
+    return logger.get_stats(days)
+
+
+# ============ Orchestrator Endpoints ============
+from orchestrator import Orchestrator, OrchestratorAgent, AgentRole, SubAgent
+
+orchestrator = Orchestrator()
+
+class OrchestratorRequest(BaseModel):
+    task: str
+    enable_parallel: bool = True
+
+class OrchestratorResponse(BaseModel):
+    task_id: str
+    status: str
+    subtasks: List[Dict]
+    final_result: str
+    duration: float
+    errors: List[str]
+
+
+@app.post("/api/orchestrator/execute", response_model=OrchestratorResponse)
+async def orchestrator_execute(request: OrchestratorRequest):
+    """Execute a task using the multi-agent orchestrator"""
+    orchestrator.enable_parallel = request.enable_parallel
+    result = orchestrator.execute_task(request.task)
+    
+    return OrchestratorResponse(
+        task_id=result.task_id,
+        status=result.status,
+        subtasks=[
+            {
+                "id": t.id,
+                "role": t.role.value,
+                "status": t.status,
+                "description": t.description,
+                "result": t.result
+            }
+            for t in result.subtasks
+        ],
+        final_result=result.final_result,
+        duration=result.duration,
+        errors=result.errors
+    )
+
+
+@app.get("/api/orchestrator/status")
+async def orchestrator_status():
+    """Get current orchestrator status"""
+    return orchestrator.get_status()
+
+
+@app.get("/api/orchestrator/roles")
+async def orchestrator_roles():
+    """Get available agent roles"""
+    return {
+        "roles": [
+            {"name": role.value, "tools": SubAgent(role).tools}
+            for role in AgentRole
+        ]
+    }
+
+
+@app.post("/api/orchestrator/reset")
+async def orchestrator_reset():
+    """Reset orchestrator state"""
+    global orchestrator
+    orchestrator = Orchestrator()
+    return {"status": "reset"}
+
+
+# ============ Self-Healing Endpoints ============
+from self_healing import SelfHealingEngine, SelfHealingAgent
+
+self_healing_engine = SelfHealingEngine()
+
+class HealingRequest(BaseModel):
+    test_path: str = "tests/"
+    file_to_fix: str = None
+    code_context: str = ""
+
+
+@app.post("/api/self-healing/run")
+async def run_self_healing(request: HealingRequest):
+    """Run self-healing process"""
+    success, iterations = self_healing_engine.heal(
+        test_path=request.test_path,
+        code_context=request.code_context,
+        file_to_fix=request.file_to_fix
+    )
+    
+    return {
+        "success": success,
+        "report": self_healing_engine.get_report()
+    }
+
+
+@app.get("/api/self-healing/status")
+async def self_healing_status():
+    """Get self-healing status"""
+    return self_healing_engine.get_report()
+
+
+# ============ MCP Marketplace Endpoints ============
+from mcp_marketplace import MCPMarketplace
+
+mcp_marketplace = MCPMarketplace()
+
+
+@app.get("/api/mcp/marketplace/servers")
+async def mcp_list_servers(category: str = None, installed: bool = None):
+    """List available MCP servers"""
+    if installed:
+        servers = mcp_marketplace.list_installed()
+    elif category:
+        servers = mcp_marketplace.list_by_category(category)
+    else:
+        servers = list(mcp_marketplace.servers.values())
+    
+    return {
+        "count": len(servers),
+        "servers": [
+            {
+                "name": s.name,
+                "description": s.description,
+                "category": s.category,
+                "installed": s.installed
+            }
+            for s in servers
+        ]
+    }
+
+
+@app.get("/api/mcp/marketplace/search")
+async def mcp_search(q: str):
+    """Search MCP servers"""
+    results = mcp_marketplace.search(q)
+    return {
+        "count": len(results),
+        "servers": [
+            {
+                "name": s.name,
+                "description": s.description,
+                "category": s.category,
+                "installed": s.installed
+            }
+            for s in results
+        ]
+    }
+
+
+@app.post("/api/mcp/marketplace/install/{name}")
+async def mcp_install(name: str):
+    """Install an MCP server"""
+    result = mcp_marketplace.install(name)
+    return result
+
+
+@app.post("/api/mcp/marketplace/uninstall/{name}")
+async def mcp_uninstall(name: str):
+    """Uninstall an MCP server"""
+    result = mcp_marketplace.uninstall(name)
+    return result
+
+
+@app.post("/api/mcp/marketplace/update")
+async def mcp_update(name: str = None):
+    """Update MCP server(s)"""
+    result = mcp_marketplace.update(name)
+    return result
+
+
+@app.get("/api/mcp/marketplace/config/{name}")
+async def mcp_get_config(name: str):
+    """Get MCP server configuration"""
+    config = mcp_marketplace.get_config(name)
+    if config:
+        return config
+    return {"error": f"Server '{name}' not found"}
+
+
+@app.get("/api/mcp/marketplace/categories")
+async def mcp_categories():
+    """Get all categories"""
+    return {"categories": mcp_marketplace.get_all_categories()}
+
+
+# ============ Subagents Endpoints ============
+from subagents import NativeSubAgents, MultiAgentOrchestrator, SubAgentType
+
+subagents_system = NativeSubAgents()
+orchestrator = MultiAgentOrchestrator()
+
+
+class SubAgentTask(BaseModel):
+    task: str
+    agent_type: str = "coder"
+    name: str = None
+    context: Dict = {}
+
+
+class SubAgentExecuteRequest(BaseModel):
+    tasks: List[SubAgentTask]
+    parallel: bool = True
+
+
+@app.post("/api/subagents/execute")
+async def subagents_execute(request: SubAgentExecuteRequest):
+    """Execute tasks with subagents"""
+    # Convert agent types
+    task_dicts = []
+    for t in request.tasks:
+        try:
+            agent_type = SubAgentType(t.agent_type)
+        except ValueError:
+            agent_type = SubAgentType.CODER
+        
+        task_dicts.append({
+            "task": t.task,
+            "agent_type": agent_type,
+            "name": t.name,
+            "context": t.context
+        })
+    
+    # Execute
+    if request.parallel:
+        results = await subagents_system.execute_parallel(task_dicts)
+    else:
+        results = await subagents_system.execute_sequential(task_dicts)
+    
+    # Aggregate
+    aggregated = subagents_system.aggregate_results(results)
+    
+    return aggregated
+
+
+@app.get("/api/subagents/status")
+async def subagents_status():
+    """Get subagent status"""
+    return subagents_system.get_status()
+
+
+@app.get("/api/subagents/types")
+async def subagents_types():
+    """Get available subagent types"""
+    return {
+        "types": [
+            {"name": t.value, "description": t.name}
+            for t in SubAgentType
+        ]
+    }
+
+
+# LLM Provider Endpoints
+@app.get("/api/llm/providers")
+async def list_llm_providers():
+    """Liste alle verfügbaren LLM Provider mit Status"""
+    manager = get_llm_manager()
+    return {
+        "current_provider": manager.get_current_provider_name(),
+        "providers": manager.list_providers()
+    }
+
+
+@app.post("/api/llm/switch")
+async def switch_llm_provider(request: Dict):
+    """Wechsle zu einem anderen LLM Provider"""
+    provider_name = request.get("provider")
+    if not provider_name:
+        raise HTTPException(status_code=400, detail="Provider name required")
+    
+    manager = get_llm_manager()
+    success = manager.switch_provider(provider_name)
+    
+    if success:
+        return {
+            "success": True,
+            "current_provider": manager.get_current_provider_name()
+        }
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown provider: {provider_name}")
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 

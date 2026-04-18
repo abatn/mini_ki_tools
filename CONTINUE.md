@@ -81,11 +81,75 @@ python src/agent_server.py
 
 10. **Tree of Thoughts**
     - Module: `tree_of_thoughts.py`
-    - Description: Implements a tree-of-thoughts approach for problem-solving.
+    - Description: Autonomous Task Planning - Agent plant kompletten Baum von Aktionen, bewertet Pfade, wählt optimalen. Integration in agent.py.
 
 11. **Code Refactoring Engine**
     - Module: `code_refactoring_engine.py`
     - Description: Provides tools for automated code refactoring.
+
+12. **Collaboration Mode**
+    - Module: `collaboration.py`
+    - Description: WebSocket-based multi-user collaboration with UUID rooms, broadcast messaging, and commands: /collab create, /collab join, /collab leave.
+
+13. **Config Exporter/Importer**
+    - Module: `config_exporter.py`
+    - Description: Export/import complete agent configuration as .agentconfig (YAML) with models, tools, MCP-servers, plugins. Commands: /export, /import.
+
+14. **Sandboxing (Docker Isolation)**
+    - Module: `sandbox_manager.py`
+    - Description: Jede Tool-Ausführung in eigenem Docker-Container mit Zeitlimit 5min, CPU/RAM-Limits, read-only System.
+
+15. **Audit Log (Compliance)**
+    - Module: `audit_logger.py`
+    - Description: Jede Aktion protokollieren (user_id, timestamp, action_type, file, prompt, result). Verschlüsselung mit Fernet. Admin-Befehle: /audit export, /audit search.
+
+16. **VS Code Extension**
+    - Directory: `vscode-extension/`
+    - Description: Extension öffnet WebView mit Agent-UI, unterstützt automatisches Apply von Code-Änderungen (Diff-Editor), liest aktuelle Datei/Cursor-Position via VS Code API.
+
+17. **Inline Autovervollständigung (Tab Completions)**
+    - Module: `inline_completions.py`
+    - Description: Generiert Vorschläge via lokales LLM (Ollama) für Code-Vervollständigung basierend auf aktueller Cursor-Position und Kontext.
+
+18. **Orchestrator Mode (Multi-Agent)**
+    - Module: `orchestrator.py`
+    - Description: Komplexe Tasks werden in Subtasks zerlegt (Architect → Code → Debug → Test). Jeder Sub-Agent hat spezialisierte Tools und Prompt-Template.
+
+19. **Self-Healing via Test Suites**
+    - Module: `self_healing.py`
+    - Description: Nach Code-Änderung führt Agent automatisch pytest aus. Bei Fehlern analysiert LLM den Traceback, generiert Fix, wendet an (max 3 Iterationen).
+
+20. **LLM Provider Abstraction**
+   - Module: `llm_provider.py`
+   - Config: `config/llm_config.yaml`
+   - Description: Zentrale Abstraktionsschicht für verschiedene LLM-Anbieter mit einheitlicher `generate()` Methode.
+   - **Unterstützte Provider**:
+     - `OllamaProvider`: Lokale LLM-Verbindung (http://localhost:11434)
+     - `OpenAIProvider`: API-basierte Verbindung (GPT-4, GPT-3.5)
+     - `AnthropicProvider`: Claude API (Claude-3-Sonnet)
+     - `OpenRouterProvider`: Aggregator für mehrere LLM-Anbieter
+   - **Methoden**:
+     - `generate(prompt, system_prompt, **kwargs)`: Einheitliche Generate-Methode
+     - `is_available()`: Prüft Verfügbarkeit des Providers
+     - `get_name()`: Gibt Providernamen zurück
+     - `get_default_model()`: Gibt Standard-Modell zurück
+   - **Zentrale Verwaltung**:
+     - `LLMProviderManager`: Zentrale Verwaltung der Provider
+     - `get_llm_manager()`: Globale Instanz für einfachen Zugriff
+     - `switch_provider(name)`: Wechsle zu anderem Provider zur Laufzeit
+
+21. **MCP Marketplace**
+    - Module: `mcp_marketplace.py`
+    - Config: `config/mcp_marketplace.json`
+    - Description: Registry mit öffentlichen MCP-Servern (GitHub, Slack, Database). Befehl: /mcp search, /mcp install <name>, /mcp update.
+
+21. **CLI / Headless Mode**
+    - Module: `cli.py`
+    - Description: Agent läuft ohne Web-UI, gibt Ergebnisse als JSON/Text aus. Perfekt für CI/CD Pipelines. Unterstützt --headless, --task, --output json.
+
+22. **Native Subagents (Parallel)**
+    - Module: `subagents.py`
+    - Description: Subagents laufen parallel via asyncio.gather. Jeder Subagent hat eigene Tools, LLM-Client, Memory. Hauptagent aggregiert Ergebnisse.
 
 ## API Endpoints
 - `/api/`: Base endpoint.
@@ -100,24 +164,58 @@ python src/agent_server.py
   - `/schedule/add`: Add a scheduled job.
   - `/schedule/list`: List all scheduled jobs.
   - `/schedule/remove`: Remove a scheduled job.
+  - `/ws/collab`: WebSocket endpoint for real-time collaboration.
+  - `/api/collab/rooms`: List all active collaboration rooms.
+  - `/api/config/export`: Export configuration to .agentconfig file.
+  - `/api/config/import`: Import configuration from .agentconfig file.
+  - `/api/sandbox/execute`: Execute command in isolated sandbox.
+  - `/api/sandbox/active`: List active sandboxes.
+  - `/api/sandbox/{sandbox_id}`: Kill a sandbox.
+  - `/api/audit/log`: Log an action to audit.
+  - `/api/audit/search`: Search audit logs.
+  - `/api/audit/export`: Export audit logs.
+  - `/api/audit/stats`: Get audit statistics.
+  - `/api/orchestrator/execute`: Execute task with multi-agent orchestrator.
+  - `/api/orchestrator/status`: Get current orchestrator status.
+  - `/api/orchestrator/roles`: Get available agent roles.
+  - `/api/orchestrator/reset`: Reset orchestrator state.
+  - `/api/self-healing/run`: Run self-healing process.
+  - `/api/self-healing/status`: Get self-healing status.
+  - `/api/mcp/marketplace/servers`: List available MCP servers.
+  - `/api/mcp/marketplace/search`: Search MCP servers.
+  - `/api/mcp/marketplace/install/{name}`: Install MCP server.
+  - `/api/mcp/marketplace/uninstall/{name}`: Uninstall MCP server.
+  - `/api/mcp/marketplace/update`: Update MCP server(s).
+  - `/api/mcp/marketplace/config/{name}`: Get MCP server configuration.
+  - `/api/mcp/marketplace/categories`: Get all categories.
+  - `/api/subagents/execute`: Execute task with subagents.
+  - `/api/subagents/status`: Get subagent status.
+  - `/api/subagents/aggregate`: Aggregate subagent results.
+  - `/api/llm/providers`: Liste alle verfügbaren LLM Provider mit Status.
+  - `/api/llm/switch`: Wechsle zu einem anderen LLM Provider.
 
 ## Comparison with Cline/Kilo Feature Set
-- **Implemented Features**: Long-Term Memory, Git Integration, Debugger, Voice Interface, Batch Processor, Scheduler, Plugin Manager, Code Review, MCP Server, Tree of Thoughts, Code Refactoring Engine.
+- **Implemented Features**: Long-Term Memory, Git Integration, Debugger, Voice Interface, Batch Processor, Scheduler, Plugin Manager, Code Review, MCP Server, Tree of Thoughts (Autonomous Planning), Code Refactoring Engine, Collaboration Mode, Config Export/Import, Sandboxing (Docker), Audit Log (Compliance).
 - **Missing Features** (compared to Cline/Kilo):
-  - Collaboration
-  - Sandboxing
-  - Audit Log
   - SSH
   - Rate Limiting
   - Checkpoints
 
 ## TODO List
-1. Implement Collaboration features.
-2. Add Sandboxing environment.
-3. Develop an Audit Log system.
-4. Integrate SSH capabilities.
-5. Set up Rate Limiting.
-6. Create Checkpoint functionality.
+1. ~~Implement Collaboration features.~~ (FERTIG - Teil 24)
+2. ~~Implement Config Export/Import.~~ (FERTIG - Teil 25)
+3. ~~Implement Autonomous Task Planning (Tree of Thoughts).~~ (FERTIG - Teil 31)
+4. ~~Implement Sandboxing (Docker Isolation).~~ (FERTIG - Teil 26)
+5. ~~Implement Audit Log (Compliance).~~ (FERTIG - Teil 28)
+6. ~~Implement VS Code Extension.~~ (FERTIG - Teil 33)
+7. ~~Implement Inline Autovervollständigung.~~ (FERTIG - Teil 34)
+8. ~~Implement Orchestrator Mode.~~ (FERTIG - Teil 35)
+9. ~~Implement Self-Healing via Test Suites.~~ (FERTIG - Teil 37)
+10. ~~Implement MCP Marketplace.~~ (FERTIG - Teil 38)
+11. ~~Implement LLM Provider Abstraction.~~ (FERTIG - Teil 20)
+12. Integrate SSH capabilities.
+13. Set up Rate Limiting.
+14. Create Checkpoint functionality.
 
 ## Troubleshooting
 ### Common Issues and Their Solutions
@@ -200,9 +298,9 @@ Please review and edit the `CONTINUE.md` file as needed, commit it to your repos
 10. **Tree of Thoughts**
     - Module: `tree_of_thoughts.py`
     - Description: Implements a tree-of-thoughts approach for problem-solving.
-    - Status: 🔴 NICHT IM CODE VORHANDEN - MUSS NACHGERÜSTET WERDEN
+   - Status: 🟢 IMPLEMENTIERT
 
 11. **Code Refactoring Engine**
     - Module: `code_refactoring_engine.py`
     - Description: Provides tools for automated code refactoring.
-    - Status: 🔴 NICHT IM CODE VORHANDEN - MUSS NACHGERÜSTET WERDEN
+   - Status: 🟢 IMPLEMENTIERT
