@@ -16,7 +16,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Import LLM Provider (zentrale Abstraktion)
-from .llm_provider import get_llm_manager, LLMProvider
+from llm_provider import get_llm_manager, LLMProvider
 
 
 class ToolName(Enum):
@@ -96,12 +96,18 @@ if __name__ == "__main__":
     
     def __init__(
         self,
-        model: str = "llama3.2",
+        model: str = None,
         max_iterations: int = 10,
         timeout: int = 30,
         llm_manager: LLMProvider = None
     ):
-        self.model = model
+        # Get model from environment variable or use provider's default
+        # This ensures central configuration through LLM_MODEL env var
+        import os
+        if model is None:
+            model = os.environ.get("LLM_MODEL")
+        
+        self.model = model  # Will be resolved after provider init
         self.max_iterations = max_iterations
         self.timeout = timeout
         self._session = requests.Session()
@@ -109,6 +115,12 @@ if __name__ == "__main__":
         self.history: List[TAOState] = []
         self._llm_manager = llm_manager or get_llm_manager()
         self._fallback_tool_call = None  # For fallback mode direct execution
+        
+        # Resolve model after provider is initialized
+        if self.model is None:
+            provider = self._llm_manager.get_provider()
+            if provider:
+                self.model = provider.get_default_model()
     
     def _check_llm_available(self) -> bool:
         """Check if LLM provider is available"""

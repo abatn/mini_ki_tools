@@ -2,7 +2,7 @@ import subprocess
 import json
 import os
 from typing import Dict, List, Any
-from src.dependency_installer import install_dependency
+from dependency_installer import install_packages
 
 class CodeReviewAgent:
     def __init__(self):

@@ -13,7 +13,7 @@ from git_integration import GitIntegration
 from long_term_memory import store_memory, search_memory
 from batch_processor import BatchProcessor
 from apscheduler.schedulers.background import BackgroundScheduler
-from .llm_provider import get_llm_manager, LLMProviderFactory
+from llm_provider import get_llm_manager, LLMProviderFactory
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)

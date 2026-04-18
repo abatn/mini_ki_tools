@@ -3,13 +3,30 @@
 
 import os
 import tempfile
-from faster_whisper import WhisperModel
-import pyttsx3
+try:
+    from faster_whisper import WhisperModel
+    FASTER_WHISPER_AVAILABLE = True
+except ImportError:
+    FASTER_WHISPER_AVAILABLE = False
+    WhisperModel = None
+
+try:
+    import pyttsx3
+    PYTTSX3_AVAILABLE = True
+except ImportError:
+    PYTTSX3_AVAILABLE = False
+    pyttsx3 = None
+
 from typing import Optional
 
 
 class VoiceInterface:
     def __init__(self):
+        if not FASTER_WHISPER_AVAILABLE:
+            raise ImportError("faster_whisper not installed. Run: pip install faster-whisper")
+        if not PYTTSX3_AVAILABLE:
+            raise ImportError("pyttsx3 not installed. Run: pip install pyttsx3")
+        
         # Initialize Whisper model for speech-to-text
         # Using small model for faster inference
         self.whisper_model = WhisperModel("small", device="cpu", compute_type="float32")

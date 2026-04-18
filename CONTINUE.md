@@ -99,6 +99,34 @@ python src/agent_server.py
     - Module: `sandbox_manager.py`
     - Description: Jede Tool-Ausführung in eigenem Docker-Container mit Zeitlimit 5min, CPU/RAM-Limits, read-only System.
 
+15. **VS Code Extension**
+    - Verzeichnis: `vscode-extension/`
+    - Beschreibung: VS Code Extension für direkte Integration mit dem Agent-Server
+    - Features:
+      - Chat-Panel für Kommunikation mit dem Agent
+      - Status-Bar-Anzeige
+      - Befehle: Mini KI Tools: Start, Chat, Apply Changes, Analyze, Refactor
+      - Konfigurierbarer Server-URL (Standard: http://localhost:8000)
+    - Build: `npm install && npm run compile` (erfolgreich)
+    - Debug-Modus: Mit F5 starten
+
+## Aktuelle Konfiguration (April 2026)
+
+### Docker-Container
+- Image: `mini-ki-tools`
+- Port: 8000
+- LLM_URL: `https://sheffield-narrative-freedom-moss.trycloudflare.com`
+- LLM_MODEL: `qwen2.5-coder:1.5b`
+- Volume: `~/mini_ki_tools/output:/app/output`
+
+### TAO-Loop
+- Generiert Code und Dateien
+- Ausgabe landet im Host-Ordner `output/`
+
+### VS Code Extension
+- Kompiliert und bereit für Debug-Modus (F5)
+- Verbindet sich mit `http://localhost:8000`
+
 15. **Audit Log (Compliance)**
     - Module: `audit_logger.py`
     - Description: Jede Aktion protokollieren (user_id, timestamp, action_type, file, prompt, result). Verschlüsselung mit Fernet. Admin-Befehle: /audit export, /audit search.
@@ -119,24 +147,22 @@ python src/agent_server.py
     - Module: `self_healing.py`
     - Description: Nach Code-Änderung führt Agent automatisch pytest aus. Bei Fehlern analysiert LLM den Traceback, generiert Fix, wendet an (max 3 Iterationen).
 
-20. **LLM Provider Abstraction**
+20. **LLM Provider Abstraction (Flexibel)**
    - Module: `llm_provider.py`
    - Config: `config/llm_config.yaml`
-   - Description: Zentrale Abstraktionsschicht für verschiedene LLM-Anbieter mit einheitlicher `generate()` Methode.
+   - Description: Vollständig flexible LLM-Anbindung zur Laufzeit via Umgebungsvariablen konfigurierbar.
+   - **Umgebungsvariablen**:
+     - `LLM_URL`: Die Basis-URL der LLM API (z.B. http://localhost:11434, https://api.openai.com/v1)
+     - `LLM_MODEL`: Das zu verwendende Modell (z.B. llama3.2, gpt-4, claude-3)
+     - `LLM_PROVIDER`: Der Provider-Typ (ollama, openai, anthropic, openrouter)
+     - `LLM_API_KEY`: API-Schlüssel für Cloud-Provider
    - **Unterstützte Provider**:
-     - `OllamaProvider`: Lokale LLM-Verbindung (http://localhost:11434)
+     - `OllamaProvider`: Lokale LLM-Verbindung (Standard: http://localhost:11434)
      - `OpenAIProvider`: API-basierte Verbindung (GPT-4, GPT-3.5)
      - `AnthropicProvider`: Claude API (Claude-3-Sonnet)
      - `OpenRouterProvider`: Aggregator für mehrere LLM-Anbieter
-   - **Methoden**:
-     - `generate(prompt, system_prompt, **kwargs)`: Einheitliche Generate-Methode
-     - `is_available()`: Prüft Verfügbarkeit des Providers
-     - `get_name()`: Gibt Providernamen zurück
-     - `get_default_model()`: Gibt Standard-Modell zurück
-   - **Zentrale Verwaltung**:
-     - `LLMProviderManager`: Zentrale Verwaltung der Provider
-     - `get_llm_manager()`: Globale Instanz für einfachen Zugriff
-     - `switch_provider(name)`: Wechsle zu anderem Provider zur Laufzeit
+   - **Keine festen URLs oder Modelle im Code** - alles via Umgebungsvariablen konfigurierbar
+   - **Kompatibel mit jeder OpenAI-ähnlichen API**
 
 21. **MCP Marketplace**
     - Module: `mcp_marketplace.py`
@@ -304,3 +330,44 @@ Please review and edit the `CONTINUE.md` file as needed, commit it to your repos
     - Module: `code_refactoring_engine.py`
     - Description: Provides tools for automated code refactoring.
    - Status: 🟢 IMPLEMENTIERT
+
+## Aktuelle Änderungen (April 2026)
+
+### 1. Import-Struktur konsolidiert
+- **Datum**: April 2026
+- **Änderungen**:
+  - `src/__init__.py` erweitert mit allen Public APIs für konsistente Importe
+  - Relative Importe (`from .modul`) in 4 Dateien zu absoluten Importen konvertiert:
+    - `tree_of_thoughts.py`
+    - `agent_server.py`
+    - `thought_action_observation.py`
+    - `self_healing.py`
+  - Optionale Dependencies mit Lazy Loading versehen:
+    - `embedding.py` (sentence_transformers, torch)
+    - `voice_interface.py` (faster_whisper, pyttsx3)
+    - `long_term_memory.py` (chromadb)
+    - `scheduler.py` (sqlalchemy)
+  - Import-Fixes in `code_review.py` und `cli.py`
+- **Docker**: Image gebaut mit `mini-ki-tools`, Container läuft mit LLM_URL und LLM_MODEL
+
+### 2. Modell-Konfiguration zentralisiert
+- **Datum**: April 2026
+- **Problem**: TAOLoop hatte hartcodiertes "llama3.2" und ignorierte LLM_MODEL
+- **Lösung**:
+  - `thought_action_observation.py`: `model=None` als Default, liest aus `LLM_MODEL` env var
+  - `llm_provider.py`: Neue Methoden `get_available_models()` und `get_default_model()`
+  - Fallback-Logik: Wenn kein Modell gesetzt, wird erstes verfügbares Ollama-Modell verwendet
+- **Kompatibel**: Mit CONTINUE.md (LLM Provider Abstraction)
+
+### Docker-Setup
+```bash
+docker build -t mini-ki-tools .
+docker run -d -p 8000:8000 \
+  -e LLM_URL=http://host.docker.internal:11434 \
+  -e LLM_MODEL=llama3.2 \
+  --name mini-ki-container mini-ki-tools
+```
+
+### Bestätigungen
+- ✅ IMPORT STRUKTUR KONSOLIDIERT
+- ✅ MODELL KONFIGURATION ZENTRALISIERT

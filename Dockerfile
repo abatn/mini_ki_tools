@@ -3,6 +3,9 @@ FROM python:3.10-slim
 # Set working directory
 WORKDIR /app
 
+# Set Python path for proper module imports
+ENV PYTHONPATH=/app/src
+
 # Copy requirements and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -11,10 +14,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Create necessary directories
-RUN mkdir -p logs data src
+RUN mkdir -p logs data output
 
 # Expose port
 EXPOSE 8000
 
-# Run the application
-CMD ["python", "src/agent_server.py"]
+# Define volume for persistent file storage
+VOLUME ["/app/output"]
+
+# Run the application as module
+CMD ["python", "-m", "src.agent_server"]

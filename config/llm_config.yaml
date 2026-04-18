@@ -1,30 +1,43 @@
 # LLM Provider Konfiguration
 # Zentrale Konfiguration für alle LLM-Anbieter
+# 
+# WICHTIG: Zur Laufzeit können Umgebungsvariablen verwendet werden:
+#   - LLM_URL: Die Basis-URL der LLM API (z.B. http://localhost:11434)
+#   - LLM_MODEL: Das zu verwendende Modell (z.B. llama3.2, gpt-4)
+#   - LLM_PROVIDER: Der Provider-Typ (ollama, openai, anthropic, openrouter)
+#   - LLM_API_KEY: API-Schlüssel für Cloud-Provider
+#
+# Beispiel:
+#   export LLM_URL=http://localhost:11434
+#   export LLM_MODEL=llama3.2
+#   python src/agent_server.py
 
 # Standard-Provider (ollama, openai, anthropic, openrouter)
+# Kann zur Laufzeit via LLM_PROVIDER überschrieben werden
 default_provider: ollama
 
 # Provider-spezifische Konfiguration
+# Diese Werte können durch Umgebungsvariablen überschrieben werden
 providers:
   ollama:
-    url: "http://localhost:11434"
-    model: "llama3.2"
+    url: "http://localhost:11434"  # Override: LLM_URL
+    model: "llama3.2"              # Override: LLM_MODEL
     timeout: 30
   
   openai:
-    api_key: "${OPENAI_API_KEY}"
-    model: "gpt-4"
-    base_url: "https://api.openai.com/v1"
+    api_key: ""                    # Override: LLM_API_KEY oder OPENAI_API_KEY
+    model: "gpt-4"                 # Override: LLM_MODEL oder OPENAI_MODEL
+    base_url: "https://api.openai.com/v1"  # Override: LLM_URL
     timeout: 60
   
   anthropic:
-    api_key: "${ANTHROPIC_API_KEY}"
-    model: "claude-3-sonnet-20240229"
+    api_key: ""                    # Override: LLM_API_KEY oder ANTHROPIC_API_KEY
+    model: "claude-3-sonnet-20240229"  # Override: LLM_MODEL
     timeout: 60
   
   openrouter:
-    api_key: "${OPENROUTER_API_KEY}"
-    model: "openai/gpt-3.5-turbo"
+    api_key: ""                    # Override: LLM_API_KEY oder OPENROUTER_API_KEY
+    model: "openai/gpt-3.5-turbo"  # Override: LLM_MODEL
     timeout: 60
 
 # Globale Einstellungen
