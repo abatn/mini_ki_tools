@@ -22,3 +22,6 @@ nohup.out
 # Config mit Secrets (falls vorhanden)
 config/secrets.json
 config/.env
+test*.txt
+fibonacci.py
+hello.py
