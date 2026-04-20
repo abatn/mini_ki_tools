@@ -1,0 +1,110 @@
+{
+  "app": {
+    "title": "Mini KI Tools"
+  },
+  "nav": {
+    "chat": "Chat",
+    "analyze": "Analyze",
+    "refactor": "Refactor",
+    "completion": "Completion",
+    "agent": "Agent",
+    "settings": "Settings"
+  },
+  "config": {
+    "workspace": "Workspace",
+    "notConfigured": "Not configured",
+    "model": "Model",
+    "tools": "Tools",
+    "available": "available"
+  },
+  "chat": {
+    "history": "Chat History",
+    "newChat": "New Chat",
+    "noChats": "No chats yet",
+    "startChat": "Start a conversation...",
+    "you": "You",
+    "ai": "AI Assistant",
+    "thinking": "Thinking...",
+    "placeholder": "Type your message... (Enter to send)",
+    "send": "Send",
+    "quickActions": {
+      "explain": "Explain this code",
+      "findBugs": "Find bugs",
+      "optimize": "Optimize this code",
+      "addComments": "Add comments"
+    }
+  },
+  "analyze": {
+    "title": "Code Analysis",
+    "run": "Run Analysis",
+    "running": "Analyzing...",
+    "clickToAnalyze": "Click \"Run Analysis\" to analyze your code",
+    "summary": "Summary",
+    "issues": "Issues",
+    "suggestions": "Suggestions"
+  },
+  "refactor": {
+    "title": "Code Refactoring",
+    "templates": {
+      "extract": "Extract function",
+      "rename": "Rename variables",
+      "inline": "Inline variable",
+      "optimize": "Optimize performance",
+      "clean": "Clean code"
+    },
+    "originalCode": "Original Code",
+    "codePlaceholder": "Enter code to refactor...",
+    "instructions": "Instructions",
+    "instructionsPlaceholder": "Describe how you want to refactor...",
+    "result": "Refactored Result",
+    "run": "Refactor Code",
+    "running": "Refactoring..."
+  },
+  "completion": {
+    "title": "Code Completion",
+    "get": "Get Completions",
+    "getting": "Getting completions..."
+  },
+  "agent": {
+    "title": "Agent Status",
+    "status": "Status",
+    "running": "Running",
+    "stopped": "Stopped",
+    "start": "Start Agent",
+    "stop": "Stop Agent",
+    "starting": "Starting...",
+    "stopping": "Stopping...",
+    "workspace": "Workspace",
+    "model": "Model",
+    "logs": "Agent Logs",
+    "noLogs": "Agent logs will appear here"
+  },
+  "settings": {
+    "title": "Settings",
+    "aiSettings": "AI Settings",
+    "llmUrl": "LLM Server URL",
+    "model": "Model",
+    "maxTokens": "Max Tokens",
+    "temperature": "Temperature",
+    "autoComplete": "Auto-complete code",
+    "agentSettings": "Agent Settings",
+    "shortcuts": "Keyboard Shortcuts",
+    "shortcutKeys": {
+      "openChat": "Open Chat",
+      "analyzeCode": "Analyze Code",
+      "refactor": "Refactor"
+    },
+    "save": "Save Settings",
+    "saved": "Settings saved!"
+  },
+  "status": {
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "chats": "chats"
+  },
+  "languages": {
+    "en": "English",
+    "ar": "العربية",
+    "fr": "Français"
+  }
+}

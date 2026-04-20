@@ -1,0 +1,120 @@
+{
+  "app": {
+    "title": "Mini KI Tools",
+    "workspace": "Workspace",
+    "model": "Model",
+    "file": "File",
+    "noFile": "No file"
+  },
+  "navigation": {
+    "chat": "Chat",
+    "analyze": "Analyze",
+    "refactor": "Refactor",
+    "completion": "Completion",
+    "agent": "Agent",
+    "settings": "Settings"
+  },
+  "chat": {
+    "placeholder": "Type your message... (Enter to send, Shift+Enter for new line)",
+    "send": "Send",
+    "quickActions": {
+      "explain": "Explain this code",
+      "findBugs": "Find bugs in this code",
+      "optimize": "Optimize this code",
+      "addComments": "Add comments to this code"
+    }
+  },
+  "analyze": {
+    "placeholder": "Click 'Run Analysis' to analyze the current file",
+    "runAnalysis": "Run Analysis",
+    "sections": {
+      "summary": "Summary",
+      "issues": "Issues",
+      "suggestions": "Suggestions"
+    }
+  },
+  "refactor": {
+    "templates": {
+      "extract": "Extract Function",
+      "rename": "Rename",
+      "inline": "Inline Variable",
+      "optimize": "Optimize Performance",
+      "clean": "Clean Code"
+    },
+    "labels": {
+      "original": "Original Code (Selected):",
+      "instructions": "Instructions:",
+      "placeholder": {
+        "input": "Select code in the editor to refactor...",
+        "instructions": "Describe how you want to refactor the code..."
+      }
+    },
+    "actions": {
+      "runRefactor": "Refactor Code"
+    }
+  },
+  "completion": {
+    "context": {
+      "title": "Current Context",
+      "cursor": "Cursor Position: {line}:{character}"
+    },
+    "actions": {
+      "getCompletions": "Get Completions",
+      "apply": "Apply Completion"
+    }
+  },
+  "agent": {
+    "status": {
+      "title": "Agent Status",
+      "connected": "Running",
+      "disconnected": "Stopped"
+    },
+    "actions": {
+      "start": "Start Agent",
+      "stop": "Stop Agent"
+    },
+    "info": {
+      "workspace": "Workspace:",
+      "model": "Model:",
+      "currentFile": "Current File:"
+    },
+    "logs": {
+      "placeholder": "Agent logs will appear here..."
+    }
+  },
+  "settings": {
+    "aiSettings": "AI Settings",
+    "agentSettings": "Agent Settings",
+    "shortcuts": "Keyboard Shortcuts",
+    "fields": {
+      "llmUrl": "LLM Server URL:",
+      "llmModel": "Model:",
+      "maxTokens": "Max Tokens:",
+      "temperature": "Temperature:",
+      "autoComplete": "Enable Auto-completion"
+    },
+    "modelOptions": {
+      "llama3.2": "Llama 3.2",
+      "codellama": "CodeLlama",
+      "mistral": "Mistral",
+      "mixtral": "Mixtral"
+    },
+    "actions": {
+      "save": "Save Settings"
+    },
+    "shortcutList": [
+      { "keys": "Ctrl+Shift+C", "description": "Open Chat" },
+      { "keys": "Ctrl+Shift+A", "description": "Analyze Code" },
+      { "keys": "Ctrl+Shift+R", "description": "Refactor Code" }
+    ]
+  },
+  "statusBar": {
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "noWorkspace": "No workspace"
+  },
+  "messages": {
+    "loading": "Thinking...",
+    "system": "System"
+  }
+}

@@ -407,3 +407,433 @@ docker run -d -p 8000:8000 \
 ### Bestätigungen
 - ✅ IMPORT STRUKTUR KONSOLIDIERT
 - ✅ MODELL KONFIGURATION ZENTRALISIERT
+
+### 3. UI Konsolidierung (Einheitliche Benutzeroberfläche)
+- **Datum**: April 2026
+- **Problem**: Separate Views für Chat, Code-Analyse, Refactoring, Inline-Completion, Agent-Start/Stop
+- **Lösung**:
+  - Einzige Sidebar/Panel mit Tabs für alle Funktionen
+  - VS Code Extension: Single WebView mit Tab-Navigation
+  - Web-UI: Navigation Bar mit gleichem Design
+  - Tabs: Chat, Analyze, Refactor, Completion, Agent
+- **Features**:
+  - Dropdown/Tabs für Modus-Wechsel
+  - Konsolidierte Status-Bar
+  - Einheitliches VS Code Dark+ Theme
+
+### 4. Professionelles Arabisches Design (RTL) & Internationalisierung (i18n)
+- **Datum**: April 2026
+- **Änderungen**:
+  - Vollständige Internationalisierung mit drei Sprachen: Englisch, Arabisch, Französisch
+  - Übersetzungen aus locales/{en,ar,fr}.json geladen
+  - RTL-Unterstützung (direction: rtl) für Arabisch
+  - Cairo Font für moderne arabische Typografie
+  - GitHub Dark Theme (verbesserte Farbpalette)
+  - Gradient-Effekte und moderne Schatten
+  - Animierte Elemente und Hover-Effekte
+- **UI-Komponenten**:
+  - Tab-Namen: محادثة، تحليل، إعادة هيكلة، إكمال، وكيل (Arabisch)
+  - Buttons: إرسال، تشغيل، إيقاف، حفظ (Arabisch)
+  - Status: متصل/غير متصل، قيد التشغيل/متوقف (Arabisch)
+
+### 5. Erweiterte Features
+- **Datum**: April 2026
+- **Features**:
+  - **Settings-Tab (الإعدادات)**:
+    - LLM-Server URL und Model-Auswahl
+    - Token-Limit und Temperature-Slider
+    - Auto-Complete Checkbox
+    - Tastenkürzel-Übersicht
+  - **Refactoring-Vorlagen (قوالب)**:
+    - 📤 استخراج دالة (Extract Function)
+    - ✏️ إعادة تسمية (Rename)
+    - 📥 دمج في place (Inline)
+    - ⚡ تحسين الأداء (Optimize)
+    - 🧹 تنظيف الكود (Clean Code)
+  - **Quick Actions im Chat**:
+    - 📖 Explain
+    - 🐛 Find bugs
+    - ⚡ Optimize
+    - 💬 Add comments
+
+### Bestätigungen
+- ✅ UI KONSOLIDIERT
+- ✅ ARABISCHES DESIGN IMPLEMENTIERT
+- ✅ ERWEITERTE FEATURES HINZUGEFÜGT
+
+## OpenCode-kompatible Features
+
+### 1. Plugin Hooks System
+- **Modul**: `plugin_hooks.py`
+- **Hooks**:
+  - `tool.execute.before` - Vor Tool-Ausführung (blockieren/modifizieren)
+  - `tool.execute.after` - Nach Tool-Ausführung (loggen)
+  - `session.idle` - Bei Inaktivität
+- **Verwendung**:
+```python
+from plugin_hooks import Plugin, HookType, get_plugin_manager
+
+async def my_hook(context):
+    from plugin_hooks import HookResult
+    return HookResult(allowed=True)
+
+plugin = Plugin("my_plugin", {HookType.TOOL_EXECUTE_BEFORE: my_hook})
+get_plugin_manager().register_plugin(plugin)
+```
+
+### 2. Agent Permissions System
+- **Modul**: `agent_permissions.py`
+- **Features**:
+  - tool_pattern-basierte Regeln (ALLOW/DENY/ASK)
+  - task_budget pro Agent (verhindert Endlosschleifen)
+  - Verzeichnis-Beschränkungen
+  - Subagent-Spawning-Kontrolle
+  - **Async Permission Check** in `tools.py` mit `execute_async()` Methoden
+  - **User Prompt** bei "ask"aktion via VS Code Notification
+- **rules.json** (pro Workspace):
+```json
+{
+  "tools": {
+    "write_file": "allow",
+    "execute_code": "ask",
+    "run_command": "deny",
+    "http_request": "ask",
+    "read_file": "allow"
+  },
+  "directories": ["/workspace/src", "/workspace/tests"],
+  "max_file_size_mb": 10,
+  "agent_name": "default",
+  "task_budget": 10,
+  "allow_subagent": true
+}
+```
+- **Konfiguration**:
+```python
+from agent_permissions import initialize_default_permissions, check_tool_permission
+initialize_default_permissions()
+check_tool_permission("build", "write_file")  # True/False
+```
+- **Tool Integration** (tools.py):
+```python
+# Async execution with permission check
+result = await tool.execute_async(agent_name, filename, ...)
+# Für write_file, execute_code, run_command, http_request
+```
+
+### Bestätigungen
+- ✅ PERMISSIONS IMPLEMENTIERT
+- ✅ rules.json PRO WORKSPACE GELADEN
+- ✅ TOOL-AKTIONEN VOR AUSFÜHRUNG GEPRÜFT
+- ✅ USER PROMPT BEI "ask" AKTION
+
+### 3. Slash Commands
+- **Module**: `slash_commands.py`, `slash_commands_impl.py`
+- **Befehle**:
+  - `/workflow` - Fire-and-forget Workflow (Linear Issue → PR)
+  - `/test` - TDD Test-Runner
+  - `/make` - Code-Implementierung
+  - `/explain` - Code-Erklärung
+  - `/bug` - Bug-Finder/Fixer
+  - `/refactor` - Refactoring-Vorlagen
+  - `/review` - Code-Review
+  - `/share` - Session teilen
+
+### 4. Agent Teams (Multi-Agent)
+- **Modul**: `team_management.py`
+- **Features**:
+  - Team-Erstellung mit Lead
+  - Teammate-Spawning (child sessions)
+  - Named Messaging: `team_message`, `team_broadcast`
+  - Shared Task List: `team_tasks`
+  - Plan-Approval: `team_approve_plan`
+- **MCP Tools**: `team_create`, `team_spawn`, `team_message`, `team_broadcast`, `team_tasks`, `team_approve_plan`
+
+### 5. Subagent-Delegation mit Budgets
+- **Erweitert in**: `subagents.py`
+- **Features**:
+  - `task_budget` pro Agent (verhindert infinite loops)
+  - `SubAgentSession` für persistente Sessions
+  - subagent-to-subagent delegation
+  - Budget-Check vor jedem subagent-Aufruf
+
+### 6. Vergleich OpenCode vs mini_ki_tools
+
+| Feature | OpenCode | mini_ki_tools | Status |
+|---------|----------|---------------|--------|
+| Agent-Loop | session/prompt/task | TAO-Loop | ✅ |
+| Tools | MCP + native | ToolRegistry | ✅ |
+| Plugin Hooks | tool.execute.before/after | plugin_hooks.py | ✅ |
+| Permissions | permission.* pattern | agent_permissions.py | ✅ |
+| Slash Commands | /workflow, /test, /make | slash_commands.py | ✅ |
+| Agent Teams | team_* tools | team_management.py | ✅ |
+| Subagent Budgets | task_budget | subagents.py | ✅ |
+| Web-UI | TUI | React Frontend | ✅ |
+| VS Code Extension | - | ✅ | ✅ |
+
+## Aktuelle UI-Struktur
+
+### Sidebar Navigation (VS Code Extension)
+- **Vertikale Seitenleiste** (72px breit) mit Icons statt horizontaler Tabs
+- **Icon + Label** für jede Funktion
+- **Bleibt sichtbar** beim Wechsel zwischen Ansichten
+
+### Sidebar Icons
+| Icon | Funktion | Beschreibung |
+|------|----------|-------------|
+| 💬 Chat | Chatten mit dem KI-Agenten |
+| 🔍 Analyze | Code analysieren |
+| 🔧 Refactor | Code refaktorieren mit Vorlagen |
+| ✨ Complete | Code-Vervollständigung |
+| ⚡ Agent | Agent starten/stoppen |
+| ⚙️ Settings | Konfiguration |
+
+### Einheitliches Design
+- Dark Theme: GitHub Dark / VS Code Dark+
+
+### Bestätigungen
+- ✅ SIDEBAR IMPLEMENTIERT
+- ✅ EINHEITLICHES DASHBOARD MIT SEITENLEISTE
+- ✅ ICONS BLEIBEN BEIM FUNKTIONSWECHSEL SICHTBAR
+- Sprache: Arabisch mit RTL
+- Font: Cairo
+- Farbpalette: Modernes Blau/Purple Gradient
+
+### 6. Internationalisierung (i18n) - Drei Sprachen
+- **Datum**: April 2026
+- **Implementierung**:
+  - **Web-UI (frontend/)**:
+    - react-i18next für Internationalisierung
+    - Locales-Dateien: `frontend/src/locales/{en,ar,fr}.json`
+    - Sprachauswahl-Dropdown im Header
+    - Automatisches RTL-Layout bei Arabisch
+    - Cairo Font für Arabisch
+    - Persistenz der Spracheinstellung in localStorage
+  - **VS Code Extension**:
+    - i18n-Dateien bereits vorhanden: `vscode-extension/i18n/{en,ar}.json`
+    - Französisch hinzugefügt: `vscode-extension/i18n/fr.json`
+    - RTL-Unterstützung für Arabisch
+    - Cairo Font Integration
+
+### Unterstützte Sprachen
+| Code | Sprache | RTL | Font |
+|------|---------|-----|------|
+| en | Englisch | Nein | System Default |
+| ar | العربية (Arabisch) | Ja | Cairo |
+| fr | Français (Französisch) | Nein | System Default |
+
+### Konfiguration
+- Standardsprache: Arabisch (ar) - kann in localStorage geändert werden
+- Sprachwechsel zur Laufzeit möglich
+- Automatisches Umschalten von direction: ltr/rtl
+
+### Bestätigungen
+- ✅ I18N IMPLEMENTIERT
+- ✅ DREI SPRACHEN: ENGLISCH, ARABISCH, FRANZÖSISCH
+- ✅ RTL-UNTERSTÜTZUNG FÜR ARABISCH
+- ✅ SPRACHAUSWAHL-DROPDOWN IM HEADER
+- ✅ CAIRO FONT FÜR ARABISCHE TYPOGRAFIE
+
+### 7. Automatisches VS Code Extension Setup (Zero-Configuration)
+- **Datum**: April 2026
+- **Problem**: Benutzer mussten manuell Python venv erstellen und Dependencies installieren
+- **Lösung**:
+  - Automatisches Erstellen von `python/venv/` beim ersten Start
+  - Automatisches Installieren von `pip install -r requirements.txt`
+  - Automatisches Starten von `extension_host.py` als Subprozess
+  - **Statusleiste-Fortschritt**:
+    - `$(sync~spin) Mini KI: Checking...` - Prüfe bestehende Installation
+    - `$(sync~spin) Mini KI: Creating venv...` - Erstelle Virtual Environment
+    - `$(sync~spin) Mini KI: Installing deps...` - Installiere Dependencies
+    - `$(sync~spin) Mini KI: Starting...` - Starte Python-Prozess
+    - `$(check) Mini KI` - Bereit
+    - `$(error) Mini KI: Setup failed` - Fehler
+  - **Klare Fehlermeldungen** bei Fehlern mit `vscode.window.showErrorMessage()`
+  - **Retry-Befehl**: `mini-ki-tools.retrySetup` für erneuten Versuch
+- **Implementierung**: `vscode-extension/src/extension.ts`
+  - `runAutoSetup()` - Hauptfunktion für automatischen Setup
+  - `SetupState` Enum für Statusverwaltung
+  - `updateSetupStatus()` - Aktualisiert Statusleiste
+
+### Bestätigungen
+- ✅ AUTOMATISCHES SETUP IMPLEMENTIERT
+- ✅ STATUSLEISTE-FORTSCHRITT ANGEZEIGT
+- ✅ FEHLERMELDUNGEN BEI FEHLERN
+- ✅ RETRY-MÖGLICHKEIT
+
+### 8. Permissions & Rules System
+- **Datum**: April 2026
+- **Problem**: Keine granulare Kontrolle über Tool-Ausführungen
+- **Lösung**:
+  - Lädt `rules.json` pro Workspace
+  - Prüft jede Tool-Aktion vor Ausführung über `agent_permissions.py`
+  - Bei "ask": Fragt Benutzer im Chat-Panel/VS Code Notification
+- **tools.py**:
+  - `execute_async()` Methoden mit Permission-Check
+  - `check_permission_with_ask()` für ALLOW/DENY/ASK
+  - Callback für User-Prompt bei "ask"
+- **rules.json** Struktur:
+```json
+{
+  "tools": {
+    "write_file": "allow",
+    "execute_code": "ask",
+    "run_command": "deny"
+  },
+  "task_budget": 10
+}
+```
+
+### Bestätigungen
+- ✅ PERMISSIONS IMPLEMENTIERT
+- ✅ rules.json PRO WORKSPACE GELADEN
+- ✅ TOOL-AKTIONEN VOR AUSFÜHRUNG GEPRÜFT
+- ✅ USER PROMPT BEI "ask" AKTION
+
+### 9. Sidebar Navigation
+- **Datum**: April 2026
+- **Problem**: Separate Befehle für jede Funktion
+- **Lösung**:
+  - Vertikale Seitenleiste (72px) mit Icons
+  - Bleibt sichtbar beim Wechsel zwischen Funktionen
+  - Einheitliches Dashboard mit 6 Icons
+- **Sidebar Icons**:
+  - 💬 Chat
+  - 🔍 Analyze
+  - 🔧 Refactor
+  - ✨ Complete
+  - ⚡ Agent
+  - ⚙️ Settings
+
+### Bestätigungen
+- ✅ SIDEBAR IMPLEMENTIERT
+- ✅ EINHEITLICHES DASHBOARD MIT SEITENLEISTE
+- ✅ ICONS BLEIBEN BEIM FUNKTIONSWECHSEL SICHTBAR
+
+### 10. Zero-Configuration
+- **Datum**: April 2026
+- **Problem**: Zu viele manuelle Setup-Schritte in README
+- **Lösung**:
+  - Extension installieren und starten - fertig!
+  - Automatischer Python-Setup läuft im Hintergrund
+  - Nur LLM_URL, LLM_MODEL, maxTokens konfigurierbar
+  - rules.json für Permissions
+
+### Bestätigungen
+- ✅ ZERO CONFIG IMPLEMENTIERT
+- ✅ ALLE MANUELLEN SETUP-SCHRITTE ENTFERNT
+- ✅ NUR WENIGE KONFIGURIERBARE EINSTELLUNGEN
+
+### 11. Unified Reasoning Engine
+- **Datum**: April 2026
+- **Problem**: Einzige TAO-Schleife, keine Auswahl an Reasoning-Strategien
+- **Lösung**:
+  - Neues Modul `src/reasoning_engine.py` mit Mode-Auswahl
+  - 7 verschiedene Reasoning-Modi implementiert
+- **Unterstützte Modi**:
+  | Modus | Beschreibung |
+  |------|-------------|
+  | TAO | Thought-Action-Observation (klassisch) |
+  | ToT | Tree of Thoughts - Verzweigte Pfade, Backtracking |
+  | GoT | Graph of Thoughts - Vernetzt, Zusammenführungen |
+  | Reflexion | Error Memory - Lernt aus Fehlern |
+  | Plan-Solve | Erst Plan, dann Execute |
+  | PoT | Program of Thoughts - Code als Thought |
+  | Voyager | Experience-based - Ähnliche Fälle abrufen |
+- **Implementierung**:
+  - `BaseReasoningEngine` ABC für alle Engines
+  - `ReasoningMode` Enum mit 7 Modi
+  - `ReasoningEngine` Klasse mit `set_mode()` und `think()`
+- **UI-Integration**:
+  - VS Code: Settings-Dropdown mit Mode-Info
+  - Web UI: 🧠 Reasoning-Modus Sektion
+
+### Bestätigungen
+- ✅ REASONING ENGINE IMPLEMENTIERT
+- ✅ 7 REASONING MODI VERFÜGBAR
+- ✅ MODE SELECTOR IN UI INTEGRIERT
+- ✅ GoT, REFLEXION, POT, VOYAGER NEU HINZUGEFÜGT
+
+### 12. Provider Manager - Vollautomatisches LLM-System
+- **Datum**: April 2026
+- **Problem**: Einziger Provider, keine API-Key Verwaltung, keine automatische Auswahl
+- **Lösung**:
+  - Neues Modul `src/provider_manager.py`
+  - 12 verschiedene LLM-Provider
+  - Sichere verschlüsselte API-Key Speicherung
+  - Automatische Verfügbarkeitsprüfung
+  - Latenz-Messung (Speed Test)
+  - Auto-Modus: Schnellster Provider
+- **Unterstützte Provider**:
+  | Provider | API Key Env Variable |
+  |----------|-------------------|
+  | Ollama | (lokal) |
+  | OpenAI | OPENAI_API_KEY |
+  | Anthropic | ANTHROPIC_API_KEY |
+  | Groq | GROQ_API_KEY |
+  | Hugging Face | HF_TOKEN |
+  | Together AI | TOGETHER_API_KEY |
+  | OpenRouter | OPENROUTER_API_KEY |
+  | Replicate | REPLICATE_API_TOKEN |
+  | DeepInfra | DEEPINFRA_API_KEY |
+  | Cohere | COHERE_API_KEY |
+  | Mistral AI | MISTRAL_API_KEY |
+  | Google AI | GOOGLE_API_KEY |
+- **Features**:
+  - Verschlüsselte Speicherung (`cryptography`)
+  - Periodische Prüfung alle 24 Stunden
+  - Modelliste pro Provider
+  - `get_best_provider()` für schnellsten
+  - API Endpoints für UI
+- **UI-Integration**:
+  - VS Code: 🔑 API Provider Sektion
+  - Web UI: Provider-Liste mit Status
+  - "Alle Provider prüfen" Button
+
+### Bestätigungen
+- ✅ PROVIDER MANAGER IMPLEMENTIERT
+- ✅ 12 PROVIDER UNTERSTÜTZT
+- ✅ VERSCHLÜSSELTE API-KEY SPEICHERUNG
+- ✅ AUTO-MODUS: SCHNELLSTER PROVIDER
+- ✅ LATENZ-MESSUNG
+
+### 13. Slash Commands & Team Management API
+- **Datum**: April 2026
+- **Problem**: Fehlende API Endpoints für Slash Commands und Teams
+- **Lösung**:
+  - Slash Commands Endpoints hinzugefügt
+  - Team Management Endpoints hinzugefügt
+- **Slash Commands**:
+  - `/api/commands/execute` - Slash Command ausführen
+  - `/api/commands/list` - Alle Commands auflisten
+  - `/workflow` - Fire-and-forget Workflow
+  - `/test` - TDD Test-Runner
+  - `/make` - Code-Implementierung
+  - `/explain` - Code-Erklärung
+  - `/bug` - Bug-Finder/Fixer
+  - `/refactor` - Refactoring
+  - `/review` - Code-Review
+- **Team Management**:
+  - `/api/teams/create` - Team erstellen
+  - `/api/teams/{id}/spawn` - Teammate hinzufügen
+  - `/api/teams/{id}/message` - Nachricht senden
+  - `/api/teams/{id}/status` - Team Status
+  - `/api/teams/list` - Alle Teams auflisten
+
+### Bestätigungen
+- ✅ SLASH COMMANDS API IMPLEMENTIERT
+- ✅ TEAM MANAGEMENT API IMPLEMENTIERT
+
+### 14. E2E Tests & Fixes
+- **Datum**: April 2026
+- **Problem**: Import-Fehler, fehlende Endpoints
+- **Fixes**:
+  - Relative Importe korrigiert (thought_action_observation, tree_of_thoughts, etc.)
+  - Slash Commands Endpoints hinzugefügt
+  - Team Management Endpoints hinzugefügt
+  - VS Code Extension kompiliert erfolgreich
+  - i18n RTL/LTR Switch gefixt (window.location.reload)
+
+### Bestätigungen
+- ✅ IMPORT FEHLER BEHOBEN
+- ✅ ALLE API ENDPOINTS VORHANDEN
+- ✅ E2E TEST BESTANDEN

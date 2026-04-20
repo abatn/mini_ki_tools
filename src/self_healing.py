@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Import LLM Provider (zentrale Abstraktion)
-from llm_provider import get_llm_manager, LLMProvider
+from .llm_provider import get_llm_manager, LLMProvider
 
 
 @dataclass

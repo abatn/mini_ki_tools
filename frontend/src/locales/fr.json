@@ -1,0 +1,110 @@
+{
+  "app": {
+    "title": "Outils KI Mini"
+  },
+  "nav": {
+    "chat": "Discussion",
+    "analyze": "Analyser",
+    "refactor": "Refactorer",
+    "completion": "Complétion",
+    "agent": "Agent",
+    "settings": "Paramètres"
+  },
+  "config": {
+    "workspace": "Espace de travail",
+    "notConfigured": "Non configuré",
+    "model": "Modèle",
+    "tools": "Outils",
+    "available": "disponible"
+  },
+  "chat": {
+    "history": "Historique des discussions",
+    "newChat": "Nouvelle discussion",
+    "noChats": "Pas encore de discussions",
+    "startChat": "Commencez une conversation...",
+    "you": "Vous",
+    "ai": "Assistant IA",
+    "thinking": "Réflexion en cours...",
+    "placeholder": "Tapez votre message... (Entrée pour envoyer)",
+    "send": "Envoyer",
+    "quickActions": {
+      "explain": "Expliquer ce code",
+      "findBugs": "Trouver les bugs",
+      "optimize": "Optimiser ce code",
+      "addComments": "Ajouter des commentaires"
+    }
+  },
+  "analyze": {
+    "title": "Analyse de code",
+    "run": "Lancer l'analyse",
+    "running": "Analyse en cours...",
+    "clickToAnalyze": "Cliquez sur \"Lancer l'analyse\" pour analyser votre code",
+    "summary": "Résumé",
+    "issues": "Problèmes",
+    "suggestions": "Suggestions"
+  },
+  "refactor": {
+    "title": "Refactorisation de code",
+    "templates": {
+      "extract": "Extraire une fonction",
+      "rename": "Renommer les variables",
+      "inline": "Fusionner la variable",
+      "optimize": "Optimiser les performances",
+      "clean": "Nettoyer le code"
+    },
+    "originalCode": "Code original",
+    "codePlaceholder": "Entrez le code à refactorer...",
+    "instructions": "Instructions",
+    "instructionsPlaceholder": "Décrivez comment vous voulez refactorer...",
+    "result": "Résultat refactoré",
+    "run": "Refactorer le code",
+    "running": "Refactorisation en cours..."
+  },
+  "completion": {
+    "title": "Complétion de code",
+    "get": "Obtenir les complétions",
+    "getting": "Obtention des complétions..."
+  },
+  "agent": {
+    "title": "État de l'agent",
+    "status": "Statut",
+    "running": "En cours",
+    "stopped": "Arrêté",
+    "start": "Démarrer l'agent",
+    "stop": "Arrêter l'agent",
+    "starting": "Démarrage...",
+    "stopping": "Arrêt en cours...",
+    "workspace": "Espace de travail",
+    "model": "Modèle",
+    "logs": "Journaux de l'agent",
+    "noLogs": "Les journaux de l'agent apparaîtront ici"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "aiSettings": "Paramètres IA",
+    "llmUrl": "URL du serveur LLM",
+    "model": "Modèle",
+    "maxTokens": "Tokens maximum",
+    "temperature": "Température",
+    "autoComplete": "Complétion automatique du code",
+    "agentSettings": "Paramètres de l'agent",
+    "shortcuts": "Raccourcis clavier",
+    "shortcutKeys": {
+      "openChat": "Ouvrir la discussion",
+      "analyzeCode": "Analyser le code",
+      "refactor": "Refactorer"
+    },
+    "save": "Enregistrer les paramètres",
+    "saved": "Paramètres enregistrés!"
+  },
+  "status": {
+    "connected": "Connecté",
+    "disconnected": "Déconnecté",
+    "chats": "discussions"
+  },
+  "languages": {
+    "en": "English",
+    "ar": "العربية",
+    "fr": "Français"
+  }
+}

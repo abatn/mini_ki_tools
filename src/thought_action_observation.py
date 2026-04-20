@@ -16,7 +16,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Import LLM Provider (zentrale Abstraktion)
-from llm_provider import get_llm_manager, LLMProvider
+from .llm_provider import get_llm_manager, LLMProvider
 
 
 class ToolName(Enum):
@@ -283,10 +283,13 @@ if __name__ == "__main__":
     def think(self, user_input: str, context: str = "") -> str:
         """Denke über die Eingabe nach - ruft LLM Provider auf."""
         if not self._check_llm_available():
-            return f"LLM not available. Fallback: {user_input}"
+            return f"DIRECT_ANSWER: LLM not available. Please check your configuration."
         
-        system_prompt = """You are an AI assistant that thinks step by step.
-Your task is to analyze the user's request and determine what tools to use.
+        system_prompt = """You are an AI assistant that analyzes user requests and decides how to respond.
+
+DECISION RULE:
+- If the request is purely conversational (greetings like "hallo", "hi", "hello", thanks, apologies, small talk, general knowledge questions without code/file context), respond DIRECTLY without tools
+- If the request involves code, files, web searches, or actual work, use appropriate tools
 
 Available tools:
 - write_file(filename, content): Write content to a file
@@ -296,41 +299,52 @@ Available tools:
 - http_request(url): Make HTTP request
 - run_command(command): Run terminal command
 
-IMPORTANT: When you need to create or modify code, ALWAYS use the write_file tool.
-For example: write_file("fibonacci.py", "def fib(n): ...")
+Response format - CHOOSE ONE:
 
-Format your response as:
+1. For conversational requests (greetings, thanks, simple questions):
+DIRECT_ANSWER: <your friendly response>
+
+2. For tool-requiring requests:
 THOUGHT: <your analysis>
 ACTIONS: <tool calls in format tool_name("arg1", "arg2")>"""
         
         history_context = f"\nPrevious context: {context}" if context else ""
         prompt = f"""User request: {user_input}{history_context}
 
-Analyze what needs to be done and what tools to use:"""
+Analyze the request and decide: Does this require tools (code, files, web)? Or is it purely conversational?"""
         
         return self._call_llm(prompt, system_prompt)
     
     def _fallback_think(self, user_input: str) -> str:
-        """Fallback when Ollama is not available - generates code directly"""
+        """Fallback when Ollama is not available - tries simple decision via LLM"""
+        try:
+            simple_system = """Analyze if this request is purely conversational or requires code/files.
+If conversational (greeting, thanks, simple question), respond: DIRECT_ANSWER: <response>
+If it needs work, respond: ACTIONS: """
+            
+            response = self._llm_manager.generate(user_input, simple_system, model=self.model)
+            
+            if response and "DIRECT_ANSWER:" in response:
+                return response
+            elif response and "ACTIONS:" not in response:
+                return f"DIRECT_ANSWER: {response.strip()}"
+        except:
+            pass
+        
         user_lower = user_input.lower()
         
-        # Determine what code to generate based on keywords
         code = None
         filename = "output.py"
         
         if "fibonacci" in user_lower:
             code = self.FALLBACK_TEMPLATES["fibonacci"]
             filename = "fibonacci.py"
-        elif "hello" in user_lower or "hallo" in user_lower:
-            code = self.FALLBACK_TEMPLATES["hello"]
-            filename = "hello.py"
         elif "sort" in user_lower:
             code = self.FALLBACK_TEMPLATES["sort"]
             filename = "sort.py"
         else:
             code = self.FALLBACK_TEMPLATES["default"].format(request=user_input)
         
-        # Directly execute the write_file tool
         tool_call = ToolCall(
             tool=ToolName.WRITE_FILE,
             arguments={"filename": filename, "content": code}
@@ -339,11 +353,10 @@ Analyze what needs to be done and what tools to use:"""
         tool_call.result = result
         tool_call.success = "Error" not in result
         
-        # Store in history for observe() to pick up
         self._fallback_tool_call = tool_call
         
         return f"""THOUGHT: The user wants code for: {user_input}. Creating Python file {filename}.
-ACTIONS: (executed directly)"""
+ACTIONS: write_file("{filename}", "...")"""
     
     def act(self, thought: str) -> List[ToolCall]:
         """Führe Aktionen basierend auf Thought aus."""
@@ -385,6 +398,19 @@ ACTIONS: (executed directly)"""
             logger.info(f"TAO Iteration {i}/{self.max_iterations}")
             
             thought = self.think(user_input, context)
+            
+            if thought.startswith("DIRECT_ANSWER:"):
+                direct_answer = thought[len("DIRECT_ANSWER:"):].strip()
+                state = TAOState(
+                    iteration=i,
+                    thought=thought,
+                    tool_calls=[],
+                    observations=[]
+                )
+                state.final_result = direct_answer
+                self.history.append(state)
+                return direct_answer, self.history
+            
             tool_calls = self.act(thought)
             observation = self.observe(tool_calls)
             

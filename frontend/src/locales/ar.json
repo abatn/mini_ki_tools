@@ -1,0 +1,110 @@
+{
+  "app": {
+    "title": "أدوات الذكاء الاصطناعي المصغرة"
+  },
+  "nav": {
+    "chat": "محادثة",
+    "analyze": "تحليل",
+    "refactor": "إعادة هيكلة",
+    "completion": "إكمال",
+    "agent": "وكيل",
+    "settings": "إعدادات"
+  },
+  "config": {
+    "workspace": "مساحة العمل",
+    "notConfigured": "غير مكون",
+    "model": "النموذج",
+    "tools": "الأدوات",
+    "available": "متوفر"
+  },
+  "chat": {
+    "history": "سجل المحادثات",
+    "newChat": "محادثة جديدة",
+    "noChats": "لا توجد محادثات بعد",
+    "startChat": "ابدأ محادثة...",
+    "you": "أنت",
+    "ai": "الذكاء الاصطناعي",
+    "thinking": "جاري التفكير...",
+    "placeholder": "اكتب رسالتك... (Enter للإرسال)",
+    "send": "إرسال",
+    "quickActions": {
+      "explain": "شرح هذا الكود",
+      "findBugs": "إيجاد الأخطاء",
+      "optimize": "تحسين هذا الكود",
+      "addComments": "إضافة تعليقات"
+    }
+  },
+  "analyze": {
+    "title": "تحليل الكود",
+    "run": "تشغيل التحليل",
+    "running": "جاري التحليل...",
+    "clickToAnalyze": "انقر على \"تشغيل التحليل\" لتحليل الكود",
+    "summary": "الملخص",
+    "issues": "المشاكل",
+    "suggestions": "الاقتراحات"
+  },
+  "refactor": {
+    "title": "إعادة هيكلة الكود",
+    "templates": {
+      "extract": "استخراج دالة",
+      "rename": "إعادة تسمية المتغيرات",
+      "inline": "دمج المتغير",
+      "optimize": "تحسين الأداء",
+      "clean": "تنظيف الكود"
+    },
+    "originalCode": "الكود الأصلي",
+    "codePlaceholder": "أدخل الكود المراد إعادة هيكلته...",
+    "instructions": "التعليمات",
+    "instructionsPlaceholder": "صف كيف تريد إعادة هيكلة الكود...",
+    "result": "النتيجة المعاد هيكلتها",
+    "run": "إعادة هيكلة الكود",
+    "running": "جاري إعادة الهيكلة..."
+  },
+  "completion": {
+    "title": "إكمال الكود",
+    "get": "الحصول على الإكمالات",
+    "getting": "جاري الحصول على الإكمالات..."
+  },
+  "agent": {
+    "title": "حالة الوكيل",
+    "status": "الحالة",
+    "running": "قيد التشغيل",
+    "stopped": "متوقف",
+    "start": "تشغيل الوكيل",
+    "stop": "إيقاف الوكيل",
+    "starting": "جاري التشغيل...",
+    "stopping": "جاري الإيقاف...",
+    "workspace": "مساحة العمل",
+    "model": "النموذج",
+    "logs": "سجلات الوكيل",
+    "noLogs": "ستظهر سجلات الوكيل هنا"
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "aiSettings": "إعدادات الذكاء الاصطناعي",
+    "llmUrl": "رابط خادم الذكاء الاصطناعي",
+    "model": "النموذج",
+    "maxTokens": "الحد الأقصى للتوكنات",
+    "temperature": "درجة الحرارة",
+    "autoComplete": "الإكمال التلقائي للكود",
+    "agentSettings": "إعدادات الوكيل",
+    "shortcuts": "مفاتيح الاختصار",
+    "shortcutKeys": {
+      "openChat": "فتح المحادثة",
+      "analyzeCode": "تحليل الكود",
+      "refactor": "إعادة الهيكلة"
+    },
+    "save": "حفظ الإعدادات",
+    "saved": "تم حفظ الإعدادات!"
+  },
+  "status": {
+    "connected": "متصل",
+    "disconnected": "غير متصل",
+    "chats": "محادثات"
+  },
+  "languages": {
+    "en": "English",
+    "ar": "العربية",
+    "fr": "Français"
+  }
+}

@@ -1,0 +1,229 @@
+# Slash Commands Implementation
+
+import re
+from typing import Dict, Any, Optional
+from slash_commands import (
+    SlashCommand, CommandContext, CommandResult
+)
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+async def cmd_workflow(context: CommandContext) -> CommandResult:
+    """Workflow command - Complete autonomous workflow"""
+    issue_id = context.arguments.get("issue", context.arguments.get("arg0"))
+    
+    if not issue_id:
+        return CommandResult(
+            success=False,
+            output="Usage: /workflow --issue <issue-id>"
+        )
+    
+    return CommandResult(
+        success=True,
+        output=f"Starting workflow for: {issue_id}",
+        agent_name="workflow",
+        continue_session=True,
+        metadata={"workflow_type": "issue", "issue_id": issue_id}
+    )
+
+
+async def cmd_test(context: CommandContext) -> CommandResult:
+    """Test command - Run tests and TDD cycle"""
+    action = context.arguments.get("arg0", "run")
+    
+    if action == "run":
+        return CommandResult(
+            success=True,
+            output="Running tests...",
+            agent_name="test"
+        )
+    elif action == "watch":
+        return CommandResult(
+            success=True,
+            output="Watching tests...",
+            agent_name="test"
+        )
+    else:
+        return CommandResult(
+            success=False,
+            output=f"Unknown action: {action}"
+        )
+
+
+async def cmd_make(context: CommandContext) -> CommandResult:
+    """Make command - Implement code"""
+    spec = context.arguments.get("arg0", "")
+    
+    if not spec:
+        return CommandResult(
+            success=False,
+            output="Usage: /make --spec <specification>"
+        )
+    
+    return CommandResult(
+        success=True,
+        output=f"Implementing: {spec}",
+        agent_name="make"
+    )
+
+
+async def cmd_explain(context: CommandContext) -> CommandResult:
+    """Explain command - Explain code"""
+    return CommandResult(
+        success=True,
+        output="Analyzing code...",
+        agent_name="explain",
+        continue_session=True
+    )
+
+
+async def cmd_bug(context: CommandContext) -> CommandResult:
+    """Bug command - Find and fix bugs"""
+    action = context.arguments.get("arg0", "find")
+    
+    if action == "find":
+        return CommandResult(
+            success=True,
+            output="Finding bugs...",
+            agent_name="bug"
+        )
+    elif action == "fix":
+        return CommandResult(
+            success=True,
+            output="Fixing bugs...",
+            agent_name="bug"
+        )
+    else:
+        return CommandResult(
+            success=False,
+            output="Usage: /bug --find or /bug --fix"
+        )
+
+
+async def cmd_refactor(context: CommandContext) -> CommandResult:
+    """Refactor command - Refactor code"""
+    template = context.arguments.get("arg0", "")
+    
+    templates = {
+        "extract": "Extracting function...",
+        "rename": "Renaming...",
+        "inline": "Inlining...",
+        "optimize": "Optimizing...",
+        "clean": "Cleaning..."
+    }
+    
+    output = templates.get(template, "Select a template: extract, rename, inline, optimize, clean")
+    
+    return CommandResult(
+        success=True,
+        output=output,
+        agent_name="refactor"
+    )
+
+
+async def cmd_review(context: CommandContext) -> CommandResult:
+    """Review command - Review code"""
+    pr = context.arguments.get("pr", context.arguments.get("arg0"))
+    
+    if pr:
+        return CommandResult(
+            success=True,
+            output=f"Reviewing PR #{pr}...",
+            agent_name="review"
+        )
+    
+    return CommandResult(
+        success=True,
+        output="Starting review...",
+        agent_name="review"
+    )
+
+
+async def cmd_share(context: CommandContext) -> CommandResult:
+    """Share command - Share session"""
+    action = context.arguments.get("arg0", "enable")
+    
+    if action == "enable":
+        return CommandResult(
+            success=True,
+            output="Session shared. Share URL created.",
+            continue_session=True
+        )
+    elif action == "disable":
+        return CommandResult(
+            success=True,
+            output="Session sharing disabled.",
+            continue_session=True
+        )
+    else:
+        return CommandResult(
+            success=False,
+            output="Usage: /share --enable or /share --disable"
+        )
+
+
+cmd_workflow = SlashCommand(
+    name="workflow",
+    description="Run complete autonomous workflow",
+    func=cmd_workflow,
+    aliases=["flow", "wf"],
+    requires_agent=True
+)
+
+cmd_test = SlashCommand(
+    name="test",
+    description="Run tests with TDD",
+    func=cmd_test,
+    aliases=["t"],
+    requires_agent=True
+)
+
+cmd_make = SlashCommand(
+    name="make",
+    description="Implement code from spec",
+    func=cmd_make,
+    aliases=["m"],
+    requires_agent=True
+)
+
+cmd_explain = SlashCommand(
+    name="explain",
+    description="Explain code",
+    func=cmd_explain,
+    aliases=["e", "exp"],
+    requires_agent=False
+)
+
+cmd_bug = SlashCommand(
+    name="bug",
+    description="Find and fix bugs",
+    func=cmd_bug,
+    aliases=["b"],
+    requires_agent=True
+)
+
+cmd_refactor = SlashCommand(
+    name="refactor",
+    description="Refactor code",
+    func=cmd_refactor,
+    aliases=["r", "ref"],
+    requires_agent=True
+)
+
+cmd_review = SlashCommand(
+    name="review",
+    description="Review code",
+    func=cmd_review,
+    aliases=["rev"],
+    requires_agent=True
+)
+
+cmd_share = SlashCommand(
+    name="share",
+    description="Share/open session",
+    func=cmd_share,
+    aliases=[],
+    requires_agent=False
+)

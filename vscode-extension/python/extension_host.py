@@ -78,12 +78,8 @@ class ExtensionHostBridge:
         
         logger.info(f"Initializing with LLM: {llm_provider_type}/{llm_model} at {llm_url}")
         
-        # Initialize LLM provider
-        self.llm_provider = get_llm_manager(
-            provider=llm_provider_type,
-            url=llm_url,
-            model=llm_model
-        )
+        # Initialize LLM provider - use get_llm_manager() without args, it reads from env
+        self.llm_provider = get_llm_manager()
         
         # Initialize agent
         self.agent = Agent()
@@ -237,13 +233,39 @@ def handle_message(message: Dict[str, Any]) -> Dict[str, Any]:
 # CLI entry point for testing
 if __name__ == "__main__":
     import argparse
+    import sys
     
     parser = argparse.ArgumentParser(description="Mini KI Tools Extension Host")
     parser.add_argument("--workspace", default=".", help="Workspace path")
     parser.add_argument("--command", help="Command to execute")
     parser.add_argument("--message", help="Message for chat command")
+    parser.add_argument("--stdin", action="store_true", help="Read commands from stdin")
     
     args = parser.parse_args()
     
-    bridge = ExtensionHostBridge(args.workspace)
-    print(json.dumps(bridge.get_status(), indent=2))
+    if args.stdin:
+        # Interactive mode: read JSON messages from stdin, write JSON to stdout
+        for line in sys.stdin:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                message = json.loads(line)
+                result = handle_message(message)
+                print(json.dumps(result), flush=True)
+            except json.JSONDecodeError as e:
+                print(json.dumps({"error": f"Invalid JSON: {e}"}), flush=True)
+            except Exception as e:
+                print(json.dumps({"error": str(e)}), flush=True)
+    else:
+        # Single command mode
+        bridge = ExtensionHostBridge(args.workspace)
+        
+        if args.command:
+            result = handle_message({
+                "command": args.command,
+                "params": {"message": args.message, "workspace": args.workspace}
+            })
+            print(json.dumps(result, indent=2))
+        else:
+            print(json.dumps(bridge.get_status(), indent=2))

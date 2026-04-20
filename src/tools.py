@@ -3,8 +3,11 @@ import subprocess
 import requests
 import json
 import tempfile
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Callable, Awaitable
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Import workspace manager for path validation
 try:
@@ -16,6 +19,64 @@ except ImportError:
         return "/workspace"
     def validate_path(path):
         return (True, "")
+
+# Import permissions system
+try:
+    from agent_permissions import (
+        get_permission_store, 
+        check_tool_permission,
+        PermissionCheckResult,
+        PermissionAction
+    )
+    PERMISSIONS_ENABLED = True
+except ImportError:
+    PERMISSIONS_ENABLED = False
+    PermissionCheckResult = None
+    PermissionAction = None
+    def check_tool_permission(agent_name: str, tool_name: str) -> bool:
+        return True
+
+# Permission callback for asking user (to be set by UI)
+_ask_user_callback: Callable[[str, str], Awaitable[bool]] | None = None
+
+def set_ask_user_callback(callback: Callable[[str, str], Awaitable[bool]]):
+    """Set callback for asking user permission"""
+    global _ask_user_callback
+    _ask_user_callback = callback
+
+async def check_permission_with_ask(
+    agent_name: str, 
+    tool_name: str, 
+    tool_description: str
+) -> tuple[bool, str]:
+    """
+    Check tool permission, ask user if action is 'ask'.
+    Returns (allowed, reason)
+    """
+    if not PERMISSIONS_ENABLED:
+        return (True, "Permissions not enabled")
+    
+    store = get_permission_store()
+    result = store.check_tool(agent_name, tool_name)
+    
+    if result.action == PermissionAction.ALLOW:
+        return (True, result.reason)
+    
+    if result.action == PermissionAction.DENY:
+        return (False, f"Tool '{tool_name}' is denied: {result.reason}")
+    
+    # ASK - need user confirmation
+    if _ask_user_callback is None:
+        return (False, f"Tool '{tool_name}' requires user confirmation but no callback set")
+    
+    try:
+        allowed = await _ask_user_callback(
+            tool_name, 
+            f"Der Agent möchte '{tool_name}' ausführen. Erlauben?"
+        )
+        return (allowed, "User confirmed" if allowed else "User denied")
+    except Exception as e:
+        return (False, f"Error asking user: {e}")
 
 class Tool:
     """Base class for all tools"""
@@ -30,6 +91,17 @@ class ReadFileTool(Tool):
     """Tool to read files within workspace"""
     def __init__(self):
         super().__init__("read_file", "Read content from a file within workspace")
+    
+    async def execute_async(self, agent_name: str, filename: str, encoding: str = "utf-8") -> str:
+        """Async version with permission check"""
+        # Check permission
+        allowed, reason = await check_permission_with_ask(
+            agent_name, "read_file", "Datei lesen"
+        )
+        if not allowed:
+            return f"Permission denied: {reason}"
+        
+        return self.execute(filename=filename, encoding=encoding)
     
     def execute(self, filename: str, encoding: str = "utf-8") -> str:
         try:
@@ -61,6 +133,16 @@ class WriteFileTool(Tool):
     def __init__(self):
         super().__init__("write_file", "Write content to a file within workspace")
     
+    async def execute_async(self, agent_name: str, filename: str, content: str, encoding: str = "utf-8") -> str:
+        """Async version with permission check"""
+        allowed, reason = await check_permission_with_ask(
+            agent_name, "write_file", "Datei schreiben"
+        )
+        if not allowed:
+            return f"Permission denied: {reason}"
+        
+        return self.execute(filename=filename, content=content, encoding=encoding)
+    
     def execute(self, filename: str, content: str, encoding: str = "utf-8") -> str:
         try:
             # Check read-only mode
@@ -88,6 +170,16 @@ class ExecuteCodeTool(Tool):
     """Tool to execute Python code within workspace"""
     def __init__(self):
         super().__init__("execute_code", "Execute Python code within workspace")
+    
+    async def execute_async(self, agent_name: str, code: str, timeout: int = None) -> str:
+        """Async version with permission check"""
+        allowed, reason = await check_permission_with_ask(
+            agent_name, "execute_code", "Code ausführen"
+        )
+        if not allowed:
+            return f"Permission denied: {reason}"
+        
+        return self.execute(code=code, timeout=timeout)
     
     def execute(self, code: str, timeout: int = None) -> str:
         try:
@@ -135,6 +227,17 @@ class HttpRequestTool(Tool):
     def __init__(self):
         super().__init__("http_request", "Make HTTP requests")
     
+    async def execute_async(self, agent_name: str, url: str, method: str = "GET", 
+                           headers: Dict[str, str] = None, data: Dict[str, Any] = None) -> str:
+        """Async version with permission check"""
+        allowed, reason = await check_permission_with_ask(
+            agent_name, "http_request", "HTTP-Anfrage senden"
+        )
+        if not allowed:
+            return f"Permission denied: {reason}"
+        
+        return self.execute(url=url, method=method, headers=headers, data=data)
+    
     def execute(self, url: str, method: str = "GET", headers: Dict[str, str] = None, 
                 data: Dict[str, Any] = None) -> str:
         try:
@@ -157,6 +260,16 @@ class RunCommandTool(Tool):
     """Tool to run terminal commands within workspace"""
     def __init__(self):
         super().__init__("run_command", "Run terminal commands within workspace")
+    
+    async def execute_async(self, agent_name: str, command: str, timeout: int = 30) -> str:
+        """Async version with permission check"""
+        allowed, reason = await check_permission_with_ask(
+            agent_name, "run_command", "Befehl ausführen"
+        )
+        if not allowed:
+            return f"Permission denied: {reason}"
+        
+        return self.execute(command=command, timeout=timeout)
     
     def execute(self, command: str, timeout: int = 30) -> str:
         try:

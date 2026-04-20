@@ -1,10 +1,12 @@
-# Native Subagents - Parallel Task Execution
+# Native Subagents - Parallel Task Execution with Budgets & Persistent Sessions
 # Subagents laufen parallel via asyncio.gather. Jeder Subagent hat eigene Tools, LLM-Client, Memory.
 # Hauptagent aggregiert Ergebnisse.
+# Unterstützt: task_budget, subagent-to-subagent delegation, session persistence
 
 import asyncio
 import uuid
 import json
+import os
 from typing import List, Dict, Any, Optional, Callable
 from dataclasses import dataclass, field
 from enum import Enum
@@ -21,6 +23,29 @@ class SubAgentType(Enum):
     ANALYZER = "analyzer"
     WRITER = "writer"
     EXECUTOR = "executor"
+    BUILDER = "builder"  # New: for making code changes
+    TESTER = "tester"   # New: for running tests
+
+
+@dataclass
+class SubAgentSession:
+    """Persistent session for subagent"""
+    session_id: str
+    agent_id: str
+    created_at: datetime
+    last_active: datetime
+    history: List[Dict] = field(default_factory=list)
+    state: Dict = field(default_factory=dict)
+    task_budget: int = 10
+    tasks_used: int = 0
+
+
+@dataclass
+class SubAgentBudget:
+    """Budget tracking for subagent"""
+    remaining: int
+    total: int
+    type: str = "task"  # "task" or "token"
 
 
 @dataclass

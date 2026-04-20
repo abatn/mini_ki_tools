@@ -62,3 +62,45 @@ from .scheduler import add_job, list_jobs, remove_job
 from .voice_interface import VoiceInterface
 from .utils import setup_directories, load_config, save_config
 from .cli import HeadlessAgent, CLI
+
+# OpenCode-like Features
+from .plugin_hooks import (
+    Plugin, PluginManager, HookType, HookContext, HookResult,
+    get_plugin_manager
+)
+from .agent_permissions import (
+    AgentPermissions, PermissionStore, check_tool_permission,
+    check_directory_permission, can_spawn_subagent, use_task_budget,
+    get_permission_store, initialize_default_permissions
+)
+from .slash_commands import (
+    SlashCommand, CommandRegistry, CommandContext, CommandResult,
+    get_command_registry, is_command, get_help_text
+)
+from .team_management import (
+    Team, Teammate, TeamMessage, TeamManager,
+    get_team_manager, get_team_tools
+)
+
+# Provider Manager
+from .provider_manager import (
+    ProviderManager,
+    get_provider_manager,
+    get_available_providers,
+    get_best_llm_config
+)
+
+# Reasoning Engine
+from .reasoning_engine import (
+    ReasoningEngine,
+    get_reasoning_engine,
+    ReasoningMode
+)
+
+# Workspace
+from .workspace import (
+    WorkspaceManager,
+    get_workspace_manager,
+    get_workspace_path,
+    validate_path
+)

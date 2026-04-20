@@ -1,0 +1,120 @@
+{
+  "app": {
+    "title": "أدوات الذكاء الاصطناعي المصغرة",
+    "workspace": "مساحة العمل",
+    "model": "النموذج",
+    "file": "الملف",
+    "noFile": "لا يوجد ملف"
+  },
+  "navigation": {
+    "chat": "محادثة",
+    "analyze": "تحليل",
+    "refactor": "إعادة هيكلة",
+    "completion": "إكمال",
+    "agent": "الوكيل",
+    "settings": "الإعدادات"
+  },
+  "chat": {
+    "placeholder": "اكتب رسالتك... (Enter للإرسال, Shift+Enter لسطر جديد)",
+    "send": "إرسال",
+    "quickActions": {
+      "explain": "اشرح هذا الكود",
+      "findBugs": "ابحث عن الأخطاء في هذا الكود",
+      "optimize": "حسّن هذا الكود",
+      "addComments": "أضف تعليقات لهذا الكود"
+    }
+  },
+  "analyze": {
+    "placeholder": "انقر على \"تشغيل التحليل\" لتحليل الملف الحالي",
+    "runAnalysis": "تشغيل التحليل",
+    "sections": {
+      "summary": "ملخص",
+      "issues": "المشاكل",
+      "suggestions": "الاقتراحات"
+    }
+  },
+  "refactor": {
+    "templates": {
+      "extract": "استخراج دالة",
+      "rename": "إعادة تسمية",
+      "inline": "دمج متغير",
+      "optimize": "تحسين الأداء",
+      "clean": "تنظيف الكود"
+    },
+    "labels": {
+      "original": "الكود الأصلي (المحدد):",
+      "instructions": "التعليمات:",
+      "placeholder": {
+        "input": "حدد الكود في المحرر لإعادة هيكلته...",
+        "instructions": "صف كيف تريد إعادة هيكلة الكود..."
+      }
+    },
+    "actions": {
+      "runRefactor": "إعادة هيكلة الكود"
+    }
+  },
+  "completion": {
+    "context": {
+      "title": "السياق الحالي",
+      "cursor": "موقع المؤشر: {line}:{character}"
+    },
+    "actions": {
+      "getCompletions": "الحصول على الإكمالات",
+      "apply": "تطبيق الإكمال"
+    }
+  },
+  "agent": {
+    "status": {
+      "title": "حالة الوكيل",
+      "connected": "قيد التشغيل",
+      "disconnected": "متوقف"
+    },
+    "actions": {
+      "start": "تشغيل الوكيل",
+      "stop": "إيقاف الوكيل"
+    },
+    "info": {
+      "workspace": "مساحة العمل:",
+      "model": "النموذج:",
+      "currentFile": "الملف الحالي:"
+    },
+    "logs": {
+      "placeholder": "ستظهر سجلات الوكيل هنا"
+    }
+  },
+  "settings": {
+    "aiSettings": "إعدادات الذكاء الاصطناعي",
+    "agentSettings": "إعدادات الوكيل",
+    "shortcuts": "مفاتيح الاختصار",
+    "fields": {
+      "llmUrl": "رابط خادم الذكاء الاصطناعي:",
+      "llmModel": "النموذج:",
+      "maxTokens": "الحد الأقصى للتوكنات:",
+      "temperature": "درجة الحرارة:",
+      "autoComplete": "تفعيل الإكمال التلقائي"
+    },
+    "modelOptions": {
+      "llama3.2": "Llama 3.2",
+      "codellama": "CodeLlama",
+      "mistral": "Mistral",
+      "mixtral": "Mixtral"
+    },
+    "actions": {
+      "save": "حفظ الإعدادات"
+    },
+    "shortcutList": [
+      { "keys": "Ctrl+Shift+C", "description": "فتح المحادثة" },
+      { "keys": "Ctrl+Shift+A", "description": "تحليل الكود" },
+      { "keys": "Ctrl+Shift+R", "description": "إعادة الهيكلة" }
+    ]
+  },
+  "statusBar": {
+    "connected": "متصل",
+    "disconnected": "غير متصل",
+    "noWorkspace": "لا توجد مساحة عمل"
+  },
+  "messages": {
+    "loading": "جارٍ التفكير...",
+    "system": "النظام"
+  }
+}

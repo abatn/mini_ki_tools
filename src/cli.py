@@ -12,7 +12,11 @@ from pathlib import Path
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from agent import Agent
+try:
+    from .agent import Agent
+except ImportError:
+    class Agent:
+        pass
 from tools import ToolRegistry
 from long_term_memory import store_memory, search_memory
 
