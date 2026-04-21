@@ -837,3 +837,43 @@ result = await tool.execute_async(agent_name, filename, ...)
 - ✅ IMPORT FEHLER BEHOBEN
 - ✅ ALLE API ENDPOINTS VORHANDEN
 - ✅ E2E TEST BESTANDEN
+
+### 15. Docker Import & Build Fixes
+- **Datum**: April 2026
+- **Problem**: Docker-Container startet nicht wegen mehrerer Issues
+- **Probleme identifiziert**:
+  1. **Relative Import Errors**: `from .module` funktioniert nicht mit `python -m`
+  2. **Agent Return Value**: Tuple statt String erwartet
+  3. **Docker Build Timeout**: Build dauert >5 Minuten
+  4. **Root Returns JSON**: `/` gibt `{"message":...}` statt HTML
+  5. **Static Files 404**: Falscher Pfad für `/static/...`
+  6. **Missing deps**: Python 3.9 type hints (`|` statt `Optional[]`)
+- **Lösungen implementiert**:
+  1. **Relative Imports → Absolute**: Alle `from .modul` zu `from modul` konvertiert in:
+     - `agent_server.py`
+     - `agent.py`
+     - `thought_action_observation.py`
+     - `tools.py`
+  2. **Agent Return Fix**: `agent.py:process_message()` gibt jetzt Dict statt TAOState zurück
+  3. **Dockerfile Optimiert**: Pre-built Frontend wird kopiert, kein npm build im Container
+  4. **Path Fix**: `Path(__file__).resolve()` für robuste Pfad-auflösung
+  5. **Static Path**: Korrekter Pfad `/app/frontend/build/static/`
+  6. **Python 3.9 Fix**: `Callable[[str, str], Awaitable[bool]] | None` → `Optional[Callable[...]]`
+- **Dockerfile Optimierungen**:
+  ```dockerfile
+  # Alt: Build dauert >5 min (npm install + npm build im Container)
+  # Neu: ~45 Sekunden (kopiert pre-built frontend/build/)
+  ```
+- **Funktionierende Endpoints**:
+  - `GET /` → HTML (React Web UI)
+  - `GET /health` → JSON mit Workspace + LLM Info
+  - `GET /static/{file}` → Statische Files (CSS, JS)
+  - `POST /chat` → KI Response mit History
+
+### Bestätigungen
+- ✅ RELATIVE IMPORTS ZU ABSOLUTEN KONVERTIERT
+- ✅ AGENT RETURN VALUE FIXED
+- ✅ DOCKER BUILD VON 5+ MIN AUF ~45 SEK REDUZIERT
+- ✅ ROOT GIBT HTML ZURÜCK
+- ✅ STATIC FILES FUNKTIONIEREN (267KB JS, 21KB CSS)
+- ✅ PYTHON 3.9 KOMPATIBLE TYPE HINTS

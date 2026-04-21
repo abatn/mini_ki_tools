@@ -3,7 +3,7 @@ import subprocess
 import requests
 import json
 import tempfile
-from typing import Dict, Any, List, Callable, Awaitable
+from typing import Dict, Any, List, Callable, Awaitable, Optional, Union
 from pathlib import Path
 import logging
 
@@ -37,7 +37,7 @@ except ImportError:
         return True
 
 # Permission callback for asking user (to be set by UI)
-_ask_user_callback: Callable[[str, str], Awaitable[bool]] | None = None
+_ask_user_callback: Optional[Callable[[str, str], Awaitable[bool]]] = None
 
 def set_ask_user_callback(callback: Callable[[str, str], Awaitable[bool]]):
     """Set callback for asking user permission"""

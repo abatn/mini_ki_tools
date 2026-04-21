@@ -8,12 +8,13 @@ import uvicorn
 import os
 import json
 import logging
-from .agent import Agent
-from .tools import ToolRegistry
-from .git_integration import GitIntegration
-from .long_term_memory import store_memory, search_memory
-from .batch_processor import BatchProcessor
-from .llm_provider import get_llm_manager
+from agent import Agent
+from tools import ToolRegistry
+from git_integration import GitIntegration
+from long_term_memory import store_memory, search_memory
+from batch_processor import BatchProcessor
+from llm_provider import get_llm_manager
+from provider_manager import get_provider_manager
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # Setup logging
@@ -59,9 +60,12 @@ class ChatResponse(BaseModel):
 # Root endpoint - serve web UI
 @app.get("/")
 async def root():
-    html_path = os.path.join(os.path.dirname(__file__), "../../frontend/build/index.html")
+    from pathlib import Path
+    script_path = Path(__file__).resolve()
+    app_root = str(script_path.parent.parent)
+    html_path = os.path.join(app_root, "frontend", "build", "index.html")
     if os.path.exists(html_path):
-        with open(html_path, "r") as f:
+        with open(html_path, "r", encoding="utf-8") as f:
             return HTMLResponse(f.read())
     return {"message": "Mini KI Tools API", "version": "1.0.0"}
 
@@ -69,8 +73,11 @@ async def root():
 @app.get("/static/{file_path:path}")
 async def static_file(file_path: str):
     from fastapi.responses import FileResponse
-    base = os.path.join(os.path.dirname(__file__), "../../frontend/build")
-    path = os.path.join(base, file_path)
+    from pathlib import Path
+    script_path = Path(__file__).resolve()
+    app_root = str(script_path.parent.parent)
+    base = os.path.join(app_root, "frontend", "build", "static")
+    path = os.path.normpath(os.path.join(base, file_path))
     if os.path.exists(path):
         return FileResponse(path)
     raise HTTPException(status_code=404, detail="File not found")
@@ -79,7 +86,7 @@ async def static_file(file_path: str):
 @app.get("/health")
 async def health_check():
     try:
-        from .workspace import get_workspace_manager
+        from workspace import get_workspace_manager
         ws_manager = get_workspace_manager()
         workspace_info = {
             "workspace_path": ws_manager.get_workspace_path(),
@@ -89,7 +96,7 @@ async def health_check():
         }
     except:
         workspace_info = {"workspace_path": "/workspace"}
-    
+
     try:
         llm_manager = get_llm_manager()
         provider = llm_manager.get_provider()
@@ -100,7 +107,7 @@ async def health_check():
         }
     except:
         llm_info = {"provider": "N/A", "available": False}
-    
+
     return {"status": "ok", "workspace": workspace_info, "llm": llm_info}
 
 # Chat endpoint
@@ -117,13 +124,13 @@ async def tools():
 # Provider Manager endpoints
 @app.get("/providers")
 async def get_providers():
-    from .provider_manager import get_provider_manager
+    from provider_manager import get_provider_manager
     manager = get_provider_manager()
     return manager.to_dict()
 
 @app.post("/providers/check")
 async def check_providers():
-    from .provider_manager import get_provider_manager
+    from provider_manager import get_provider_manager
     import asyncio
     manager = get_provider_manager()
     await manager.check_all_providers(force=True)
@@ -132,12 +139,12 @@ async def check_providers():
 # Workspace config
 @app.get("/workspace/config")
 async def get_workspace_config():
-    from .workspace import get_workspace_manager
+    from workspace import get_workspace_manager
     return get_workspace_manager().get_config()
 
 @app.post("/workspace/config")
 async def update_workspace_config(config: dict):
-    from .workspace import get_workspace_manager
+    from workspace import get_workspace_manager
     ws = get_workspace_manager()
     for k, v in config.items():
         ws.set_config(k, v)
@@ -164,24 +171,24 @@ async def search_mem(request: Dict):
 # Collaboration endpoints
 @app.get("/api/collab/rooms")
 async def list_rooms():
-    from .collaboration import collaboration_manager
+    from collaboration import collaboration_manager
     return {"rooms": [r.to_dict() for r in collaboration_manager.rooms.values()]}
 
 # Export/Import endpoints
 @app.get("/api/config/export")
 async def export_config():
-    from .config_exporter import handle_export_command
+    from config_exporter import handle_export_command
     return await handle_export_command({})
 
 @app.post("/api/config/import")
 async def import_config(request: Dict):
-    from .config_exporter import handle_import_command
+    from config_exporter import handle_import_command
     return await handle_import_command(request)
 
 # Sandbox endpoints
 @app.post("/api/sandbox/execute")
 async def sandbox_exec(request: Dict):
-    from .sandbox_manager import get_sandbox_manager
+    from sandbox_manager import get_sandbox_manager
     return await get_sandbox_manager().execute(
         request.get("command", ""),
         request.get("files", []),
@@ -191,13 +198,13 @@ async def sandbox_exec(request: Dict):
 
 @app.get("/api/sandbox/active")
 async def active_sandboxes():
-    from .sandbox_manager import get_sandbox_manager
+    from sandbox_manager import get_sandbox_manager
     return get_sandbox_manager().get_active()
 
 # Audit endpoints
 @app.post("/api/audit/log")
 async def audit_log(request: Dict):
-    from .audit_logger import log_action
+    from audit_logger import log_action
     return log_action(
         request.get("user_id", "anonymous"),
         request.get("action", ""),
@@ -207,31 +214,31 @@ async def audit_log(request: Dict):
 # Orchestrator endpoints
 @app.post("/api/orchestrator/execute")
 async def orchestrator_exec(request: Dict):
-    from .orchestrator import get_orchestrator
+    from orchestrator import get_orchestrator
     orch = get_orchestrator()
     return await orch.execute_task(request.get("task", ""), request.get("context", {}))
 
 @app.get("/api/orchestrator/roles")
 async def orchestrator_roles():
-    from .orchestrator import AgentRole
+    from orchestrator import AgentRole
     return {"roles": [r.value for r in AgentRole]}
 
 # Self-healing endpoints
 @app.post("/api/self-healing/run")
 async def self_healing_run(request: Dict):
-    from .self_healing import get_self_healing_engine
+    from self_healing import get_self_healing_engine
     return await get_self_healing_engine().run(request.get("test_file", ""))
 
 # MCP Marketplace endpoints
 @app.get("/api/mcp/marketplace/servers")
 async def mcp_servers():
-    from .mcp_marketplace import get_marketplace
+    from mcp_marketplace import get_marketplace
     return get_marketplace().list_servers()
 
 # Subagents endpoints
 @app.post("/api/subagents/execute")
 async def subagents_exec(request: Dict):
-    from .subagents import get_subagents
+    from subagents import get_subagents
     return await get_subagents().execute(
         request.get("task", ""),
         request.get("agent_types", []),
@@ -250,38 +257,95 @@ async def switch_llm(request: Dict):
     success = manager.switch_provider(request.get("provider", ""))
     return {"success": success}
 
+# Provider Manager API Keys endpoints
+@app.post("/api/llm/keys")
+async def save_api_key(request: Dict):
+    """Speichert API-Key für einen Provider verschlüsselt"""
+    provider_id = request.get("provider_id", "")
+    api_key = request.get("api_key", "")
+    
+    if not provider_id:
+        return {"success": False, "error": "provider_id required"}
+    
+    if not api_key:
+        return {"success": False, "error": "api_key required"}
+    
+    pm = get_provider_manager()
+    success = pm.save_api_key(provider_id, api_key)
+    
+    return {"success": success}
+
+@app.post("/api/llm/keys/test")
+async def test_api_key(request: Dict):
+    """Testet einen API-Key mit Validierung"""
+    provider_id = request.get("provider_id", "")
+    api_key = request.get("api_key", "")
+    
+    if not provider_id:
+        return {"valid": False, "error": "provider_id required"}
+    
+    if not api_key:
+        return {"valid": False, "error": "api_key required"}
+    
+    pm = get_provider_manager()
+    
+    # Temporär setzen und testen
+    original_key = pm.providers.get(provider_id).api_key if provider_id in pm.providers else None
+    pm.providers[provider_id].api_key = api_key
+    
+    import asyncio
+    result = await pm.check_provider(provider_id)
+    
+    # Restore original if needed
+    if original_key:
+        pm.providers[provider_id].api_key = original_key
+    
+    return {
+        "valid": result.status.value == "available",
+        "latency": result.latency_ms if result.latency_ms < 999999 else None,
+        "models": result.models[:10] if result.models else [],
+        "error": None if result.status.value == "available" else f"Status: {result.status.value}"
+    }
+
+@app.delete("/api/llm/keys/{provider_id}")
+async def delete_api_key(provider_id: str):
+    """Entfernt API-Key für einen Provider"""
+    pm = get_provider_manager()
+    success = pm.remove_api_key(provider_id)
+    return {"success": success}
+
 # Slash Commands endpoints
 @app.post("/api/commands/execute")
 async def execute_command(request: Dict):
-    from .slash_commands import get_command_registry
+    from slash_commands import get_command_registry
     registry = get_command_registry()
     result = await registry.execute_command(request.get("command", ""), request.get("args", ""))
     return {"success": result.success, "output": result.output}
 
 @app.get("/api/commands/list")
 async def list_commands():
-    from .slash_commands import get_command_registry
+    from slash_commands import get_command_registry
     registry = get_command_registry()
     return {"commands": [{"name": n, "description": c.description} for n, c in registry._commands.items()]}
 
 # Team Management endpoints
 @app.post("/api/teams/create")
 async def create_team(request: Dict):
-    from .team_management import get_team_manager
+    from team_management import get_team_manager
     manager = get_team_manager()
     team = manager.create_team(request.get("team_name", "default"), request.get("lead", "architect"))
     return {"success": True, "team_id": team.id}
 
 @app.post("/api/teams/{team_id}/spawn")
 async def spawn_teammate(team_id: str, request: Dict):
-    from .team_management import get_team_manager
+    from team_management import get_team_manager
     manager = get_team_manager()
     result = manager.spawn_teammate(team_id, request.get("type", "coder"))
     return {"success": result.success}
 
 @app.get("/api/teams/{team_id}/status")
 async def team_status(team_id: str):
-    from .team_management import get_team_manager
+    from team_management import get_team_manager
     manager = get_team_manager()
     team = manager.get_team(team_id)
     if not team:

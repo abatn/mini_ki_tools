@@ -25,3 +25,24 @@ config/.env
 test*.txt
 fibonacci.py
 hello.py
+# Frontend build und dependencies
+frontend/build/
+frontend/node_modules/
+node_modules/
+
+# Cache Dateien
+.cache/
+*.cache
+
+# Python
+venv/
+venv_test/
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store

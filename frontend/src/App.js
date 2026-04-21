@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import './App.css';
 import LanguageSelector from './components/LanguageSelector';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001';
 
 function App() {
   const { t } = useTranslation();
@@ -36,6 +36,10 @@ function App() {
   
   const [providers, setProviders] = useState({});
   const [checkingProviders, setCheckingProviders] = useState(false);
+  const [expandedProviders, setExpandedProviders] = useState({});
+  const [testingProviders, setTestingProviders] = useState({});
+  const [providerKeys, setProviderKeys] = useState({});
+  const [savingProviders, setSavingProviders] = useState({});
   
   const providerList = [
     { id: 'ollama', name: 'Ollama', placeholder: 'http://localhost:11434' },
@@ -85,6 +89,96 @@ function App() {
       console.error('Error checking providers:', error);
     }
     setCheckingProviders(false);
+  };
+
+  const toggleProviderExpand = (providerId) => {
+    setExpandedProviders(prev => ({
+      ...prev,
+      [providerId]: !prev[providerId]
+    }));
+  };
+
+  const testProviderKey = async (providerId) => {
+    const apiKey = providerKeys[providerId];
+    if (!apiKey) return;
+    
+    setTestingProviders(prev => ({ ...prev, [providerId]: true }));
+    try {
+      const response = await axios.post(`${API_URL}/api/llm/keys/test`, {
+        provider_id: providerId,
+        api_key: apiKey
+      });
+      
+      if (response.data.valid) {
+        setProviders(prev => ({
+          ...prev,
+          [providerId]: {
+            ...prev[providerId],
+            status: 'available',
+            latencyMs: response.data.latency,
+            models: response.data.models,
+            hasApiKey: true
+          }
+        }));
+        setProviderKeys(prev => ({ ...prev, [providerId]: '' }));
+      } else {
+        alert(`Test fehlgeschlagen: ${response.data.error}`);
+      }
+    } catch (error) {
+      alert(`Test fehlgeschlagen: ${error.message}`);
+    }
+    setTestingProviders(prev => ({ ...prev, [providerId]: false }));
+  };
+
+  const saveProviderKey = async (providerId) => {
+    const apiKey = providerKeys[providerId];
+    if (!apiKey) return;
+    
+    setSavingProviders(prev => ({ ...prev, [providerId]: true }));
+    try {
+      const response = await axios.post(`${API_URL}/api/llm/keys`, {
+        provider_id: providerId,
+        api_key: apiKey
+      });
+      
+      if (response.data.success) {
+        setProviders(prev => ({
+          ...prev,
+          [providerId]: {
+            ...prev[providerId],
+            status: 'unavailable',
+            hasApiKey: true
+          }
+        }));
+        setProviderKeys(prev => ({ ...prev, [providerId]: '' }));
+        loadProviders();
+      } else {
+        alert(`Speichern fehlgeschlagen: ${response.data.error}`);
+      }
+    } catch (error) {
+      alert(`Speichern fehlgeschlagen: ${error.message}`);
+    }
+    setSavingProviders(prev => ({ ...prev, [providerId]: false }));
+  };
+
+  const removeProviderKey = async (providerId) => {
+    try {
+      const response = await axios.delete(`${API_URL}/api/llm/keys/${providerId}`);
+      if (response.data.success) {
+        setProviders(prev => ({
+          ...prev,
+          [providerId]: {
+            ...prev[providerId],
+            status: 'unconfigured',
+            hasApiKey: false,
+            latencyMs: null,
+            models: []
+          }
+        }));
+      }
+    } catch (error) {
+      alert(`Entfernen fehlgeschlagen: ${error.message}`);
+    }
   };
 
   useEffect(() => {
@@ -653,17 +747,69 @@ function App() {
                 <h3>🔑 API Provider</h3>
                 <div className="provider-list">
                   {providerList.map(provider => (
-                    <div key={provider.id} className="provider-item">
-                      <div className="provider-info">
-                        <span className="provider-name">{provider.name}</span>
-                        <span className={`provider-status ${providers[provider.id]?.status}`}>
-                          {providers[provider.id]?.hasApiKey 
-                            ? (providers[provider.id]?.status === 'available' ? '✓ Verbunden' : '✗ Nicht verfügbar')
-                            : '○ Nicht konfiguriert'}
-                        </span>
+                    <div key={provider.id} className={`provider-accordion ${expandedProviders[provider.id] ? 'expanded' : ''}`}>
+                      <div className="provider-header" onClick={() => toggleProviderExpand(provider.id)}>
+                        <div className="provider-info">
+                          <span className="provider-name">{provider.name}</span>
+                          <span className={`provider-status ${providers[provider.id]?.status}`}>
+                            {providers[provider.id]?.hasApiKey 
+                              ? (providers[provider.id]?.status === 'available' ? '✓ Verbunden' : '✗ Nicht verfügbar')
+                              : '○ Nicht konfiguriert'}
+                          </span>
+                        </div>
+                        <div className="provider-meta">
+                          {providers[provider.id]?.latencyMs && (
+                            <span className="provider-latency">{providers[provider.id].latencyMs}ms</span>
+                          )}
+                          <span className="expand-icon">{expandedProviders[provider.id] ? '▼' : '▶'}</span>
+                        </div>
                       </div>
-                      {providers[provider.id]?.latencyMs && (
-                        <span className="provider-latency">{providers[provider.id].latencyMs}ms</span>
+                      {expandedProviders[provider.id] && (
+                        <div className="provider-details">
+                          <div className="provider-input-row">
+                            <label>API Key:</label>
+                            <input 
+                              type="password"
+                              value={providerKeys[provider.id] || ''}
+                              onChange={(e) => setProviderKeys(prev => ({ ...prev, [provider.id]: e.target.value }))}
+                              placeholder={provider.placeholder}
+                            />
+                          </div>
+                          <div className="provider-buttons">
+                            <button 
+                              className="btn-test"
+                              onClick={() => testProviderKey(provider.id)}
+                              disabled={testingProviders[provider.id] || !providerKeys[provider.id]}
+                            >
+                              {testingProviders[provider.id] ? '⏳ Teste...' : '🧪 Test'}
+                            </button>
+                            <button 
+                              className="btn-save"
+                              onClick={() => saveProviderKey(provider.id)}
+                              disabled={savingProviders[provider.id] || !providerKeys[provider.id]}
+                            >
+                              {savingProviders[provider.id] ? '⏳ Speichere...' : '💾 Speichern'}
+                            </button>
+                            {providers[provider.id]?.hasApiKey && (
+                              <button 
+                                className="btn-remove"
+                                onClick={() => removeProviderKey(provider.id)}
+                              >
+                                🗑️ Entfernen
+                              </button>
+                            )}
+                          </div>
+                          {providers[provider.id]?.models?.length > 0 && (
+                            <div className="provider-models">
+                              <label>Verfügbare Models:</label>
+                              <select>
+                                {providers[provider.id].models.map(m => (
+                                  <option key={m} value={m}>{m}</option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   ))}
