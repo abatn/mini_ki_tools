@@ -10,6 +10,26 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+# Bridge to provider_manager for API keys
+try:
+    from provider_manager import get_provider_manager
+    _PROVIDER_MANAGER_AVAILABLE = True
+except ImportError:
+    _PROVIDER_MANAGER_AVAILABLE = False
+
+def _get_api_key(provider_id: str, fallback_key: str = None) -> str:
+    """Hole API-Key aus provider_manager oder Umgebung"""
+    if _PROVIDER_MANAGER_AVAILABLE:
+        try:
+            pm = get_provider_manager()
+            if provider_id in pm.providers:
+                key = pm.providers[provider_id].api_key
+                if key:
+                    return key
+        except Exception as e:
+            logger.debug(f"Could not get key from provider_manager: {e}")
+    return fallback_key or os.environ.get(f"{provider_id.upper()}_API_KEY", "")
+
 
 class LLMProvider(ABC):
     """Abstrakte Basisklasse für LLM Provider"""
@@ -129,7 +149,7 @@ class OpenAIProvider(LLMProvider):
         # LLM_API_KEY or OPENAI_API_KEY: API key for OpenAI
         # LLM_MODEL or OPENAI_MODEL: Model to use (default: gpt-4)
         # LLM_URL or OPENAI_BASE_URL: Custom API endpoint
-        self.api_key = api_key or os.environ.get("LLM_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
+        self.api_key = _get_api_key("openai", api_key)
         self.model = model or os.environ.get("LLM_MODEL") or os.environ.get("OPENAI_MODEL", "gpt-4")
         self.base_url = base_url or os.environ.get("LLM_URL") or os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
         self.timeout = timeout
@@ -201,7 +221,7 @@ class AnthropicProvider(LLMProvider):
         model: str = "claude-3-sonnet-20240229",
         timeout: int = 60
     ):
-        self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+        self.api_key = _get_api_key("anthropic", api_key)
         self.model = model
         self.timeout = timeout
         self.base_url = "https://api.anthropic.com/v1"
@@ -267,7 +287,7 @@ class OpenRouterProvider(LLMProvider):
         model: str = "openai/gpt-3.5-turbo",
         timeout: int = 60
     ):
-        self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
+        self.api_key = _get_api_key("openrouter", api_key)
         self.model = model
         self.base_url = "https://openrouter.ai/api/v1"
         self.timeout = timeout
@@ -321,6 +341,290 @@ class OpenRouterProvider(LLMProvider):
         return self.model
 
 
+class GroqProvider(LLMProvider):
+    """Groq - Schnelle GPU-Inferenz"""
+
+    def __init__(self, api_key=None, model="llama-3.1-70b-versatile", timeout=60):
+        self.api_key = _get_api_key("groq", api_key)
+        self.model = model
+        self.base_url = "https://api.groq.com/openai/v1"
+        self.timeout = timeout
+        self._session = requests.Session()
+        self._session.headers.update({"Authorization": f"Bearer {self.api_key}"})
+        self._session.timeout = timeout
+
+    def generate(self, prompt: str, system_prompt: str = None, **kwargs) -> str:
+        if not self.api_key:
+            return "Error: Groq API key not configured"
+        try:
+            messages = [{"role": "user", "content": prompt}]
+            payload = {
+                "model": kwargs.get("model", self.model),
+                "messages": messages,
+                "temperature": kwargs.get("temperature", 0.7),
+                "max_tokens": kwargs.get("max_tokens", 2000)
+            }
+            response = self._session.post(f"{self.base_url}/chat/completions", json=payload)
+            if response.status_code == 200:
+                return response.json()["choices"][0]["message"]["content"].strip()
+            return f"Error: {response.status_code}"
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def is_available(self) -> bool:
+        return bool(self.api_key)
+
+    def get_name(self) -> str:
+        return "groq"
+
+    def get_default_model(self) -> str:
+        return self.model
+
+
+class HuggingFaceProvider(LLMProvider):
+    """Hugging Face - Open Source Models"""
+
+    def __init__(self, api_key=None, model="meta-llama/Llama-3.2-1B-Instruct", timeout=60):
+        self.api_key = _get_api_key("huggingface", api_key)
+        self.model = model
+        self.base_url = "https://api-inference.huggingface.co"
+        self.timeout = timeout
+        self._session = requests.Session()
+        self._session.headers.update({"Authorization": f"Bearer {self.api_key}"})
+        self._session.timeout = timeout
+
+    def generate(self, prompt: str, system_prompt: str = None, **kwargs) -> str:
+        if not self.api_key:
+            return "Error: HuggingFace API key not configured"
+        try:
+            payload = {
+                "inputs": prompt,
+                "parameters": {
+                    "max_new_tokens": kwargs.get("max_tokens", 500),
+                    "temperature": kwargs.get("temperature", 0.7)
+                }
+            }
+            response = self._session.post(
+                f"{self.base_url}/models/{self.model}",
+                json=payload
+            )
+            if response.status_code == 200:
+                return response.json()[0].get("generated_text", "").strip()
+            return f"Error: {response.status_code}"
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def is_available(self) -> bool:
+        return bool(self.api_key)
+
+    def get_name(self) -> str:
+        return "huggingface"
+
+    def get_default_model(self) -> str:
+        return self.model
+
+
+class TogetherAIProvider(LLMProvider):
+    """Together AI - cloud GPU"""
+
+    def __init__(self, api_key=None, model="meta-llama/Llama-3.2-70B-Instruct-Turbo", timeout=60):
+        self.api_key = _get_api_key("togetherai", api_key)
+        self.model = model
+        self.base_url = "https://api.together.ai/v1"
+        self.timeout = timeout
+        self._session = requests.Session()
+        self._session.headers.update({"Authorization": f"Bearer {self.api_key}"})
+        self._session.timeout = timeout
+
+    def generate(self, prompt: str, system_prompt: str = None, **kwargs) -> str:
+        if not self.api_key:
+            return "Error: TogetherAI API key not configured"
+        try:
+            messages = [{"role": "user", "content": prompt}]
+            payload = {
+                "model": kwargs.get("model", self.model),
+                "messages": messages,
+                "temperature": kwargs.get("temperature", 0.7),
+                "max_tokens": kwargs.get("max_tokens", 2000)
+            }
+            response = self._session.post(f"{self.base_url}/chat/completions", json=payload)
+            if response.status_code == 200:
+                return response.json()["choices"][0]["message"]["content"].strip()
+            return f"Error: {response.status_code}"
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def is_available(self) -> bool:
+        return bool(self.api_key)
+
+    def get_name(self) -> str:
+        return "togetherai"
+
+    def get_default_model(self) -> str:
+        return self.model
+
+
+class DeepInfraProvider(LLMProvider):
+    """DeepInfra - Cloud GPU"""
+
+    def __init__(self, api_key=None, model="meta-llama/Llama-3.2-70B-Instruct", timeout=60):
+        self.api_key = _get_api_key("deepinfra", api_key)
+        self.model = model
+        self.base_url = "https://api.deepinfra.com/v1"
+        self.timeout = timeout
+        self._session = requests.Session()
+        self._session.headers.update({"Authorization": f"Bearer {self.api_key}"})
+        self._session.timeout = timeout
+
+    def generate(self, prompt: str, system_prompt: str = None, **kwargs) -> str:
+        if not self.api_key:
+            return "Error: DeepInfra API key not configured"
+        try:
+            messages = [{"role": "user", "content": prompt}]
+            payload = {
+                "model": kwargs.get("model", self.model),
+                "messages": messages,
+                "temperature": kwargs.get("temperature", 0.7),
+                "max_tokens": kwargs.get("max_tokens", 2000)
+            }
+            response = self._session.post(f"{self.base_url}/chat/completions", json=payload)
+            if response.status_code == 200:
+                return response.json()["choices"][0]["message"]["content"].strip()
+            return f"Error: {response.status_code}"
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def is_available(self) -> bool:
+        return bool(self.api_key)
+
+    def get_name(self) -> str:
+        return "deepinfra"
+
+    def get_default_model(self) -> str:
+        return self.model
+
+
+class CohereProvider(LLMProvider):
+    """Cohere - Enterprise AI"""
+
+    def __init__(self, api_key=None, model="command-r-plus-08-2024", timeout=60):
+        self.api_key = _get_api_key("cohere", api_key)
+        self.model = model
+        self.base_url = "https://api.cohere.ai/v1"
+        self.timeout = timeout
+        self._session = requests.Session()
+        self._session.headers.update({"Authorization": f"Bearer {self.api_key}"})
+        self._session.timeout = timeout
+
+    def generate(self, prompt: str, system_prompt: str = None, **kwargs) -> str:
+        if not self.api_key:
+            return "Error: Cohere API key not configured"
+        try:
+            payload = {
+                "model": kwargs.get("model", self.model),
+                "message": prompt,
+                "temperature": kwargs.get("temperature", 0.7),
+                "max_tokens": kwargs.get("max_tokens", 500)
+            }
+            response = self._session.post(f"{self.base_url}/chat", json=payload)
+            if response.status_code == 200:
+                return response.json()["text"].strip()
+            return f"Error: {response.status_code}"
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def is_available(self) -> bool:
+        return bool(self.api_key)
+
+    def get_name(self) -> str:
+        return "cohere"
+
+    def get_default_model(self) -> str:
+        return self.model
+
+
+class MistralProvider(LLMProvider):
+    """Mistral AI"""
+
+    def __init__(self, api_key=None, model="mistral-large-latest", timeout=60):
+        self.api_key = _get_api_key("mistral", api_key)
+        self.model = model
+        self.base_url = "https://api.mistral.ai/v1"
+        self.timeout = timeout
+        self._session = requests.Session()
+        self._session.headers.update({"Authorization": f"Bearer {self.api_key}"})
+        self._session.timeout = timeout
+
+    def generate(self, prompt: str, system_prompt: str = None, **kwargs) -> str:
+        if not self.api_key:
+            return "Error: Mistral API key not configured"
+        try:
+            messages = [{"role": "user", "content": prompt}]
+            payload = {
+                "model": kwargs.get("model", self.model),
+                "messages": messages,
+                "temperature": kwargs.get("temperature", 0.7),
+                "max_tokens": kwargs.get("max_tokens", 2000)
+            }
+            response = self._session.post(f"{self.base_url}/chat/completions", json=payload)
+            if response.status_code == 200:
+                return response.json()["choices"][0]["message"]["content"].strip()
+            return f"Error: {response.status_code}"
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def is_available(self) -> bool:
+        return bool(self.api_key)
+
+    def get_name(self) -> str:
+        return "mistral"
+
+    def get_default_model(self) -> str:
+        return self.model
+
+
+class GoogleProvider(LLMProvider):
+    """Google AI - Gemini"""
+
+    def __init__(self, api_key=None, model="gemini-1.5-pro", timeout=60):
+        self.api_key = _get_api_key("google", api_key)
+        self.model = model
+        self.base_url = "https://generativelanguage.googleapis.com/v1"
+        self.timeout = timeout
+
+    def generate(self, prompt: str, system_prompt: str = None, **kwargs) -> str:
+        if not self.api_key:
+            return "Error: Google API key not configured"
+        try:
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "temperature": kwargs.get("temperature", 0.7),
+                    "maxOutputTokens": kwargs.get("max_tokens", 2048)
+                }
+            }
+            response = requests.post(
+                f"{self.base_url}/models/{self.model}:generateContent",
+                params={"key": self.api_key},
+                json=payload,
+                timeout=self.timeout
+            )
+            if response.status_code == 200:
+                return response.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+            return f"Error: {response.status_code}"
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def is_available(self) -> bool:
+        return bool(self.api_key)
+
+    def get_name(self) -> str:
+        return "google"
+
+    def get_default_model(self) -> str:
+        return self.model
+
+
 class LLMProviderFactory:
     """Factory zur Erstellung von LLM Providern"""
 
@@ -328,7 +632,14 @@ class LLMProviderFactory:
         "ollama": OllamaProvider,
         "openai": OpenAIProvider,
         "anthropic": AnthropicProvider,
-        "openrouter": OpenRouterProvider
+        "openrouter": OpenRouterProvider,
+        "groq": GroqProvider,
+        "huggingface": HuggingFaceProvider,
+        "togetherai": TogetherAIProvider,
+        "deepinfra": DeepInfraProvider,
+        "cohere": CohereProvider,
+        "mistral": MistralProvider,
+        "google": GoogleProvider
     }
 
     @classmethod
