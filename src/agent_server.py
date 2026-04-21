@@ -248,14 +248,16 @@ async def subagents_exec(request: Dict):
 # LLM provider endpoints
 @app.get("/api/llm/providers")
 async def llm_providers():
-    manager = get_llm_manager()
-    return {"providers": manager.list_providers()}
+    pm = get_provider_manager()
+    return {"providers": pm.to_dict()}
 
 @app.post("/api/llm/switch")
 async def switch_llm(request: Dict):
-    manager = get_llm_manager()
-    success = manager.switch_provider(request.get("provider", ""))
-    return {"success": success}
+    pm = get_provider_manager()
+    provider_id = request.get("provider_id", "")
+    if provider_id in pm.providers:
+        pm.providers[provider_id].enabled = True
+    return {"success": True}
 
 # Provider Manager API Keys endpoints
 @app.post("/api/llm/keys")
