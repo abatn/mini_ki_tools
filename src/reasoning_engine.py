@@ -122,23 +122,33 @@ class ToTEngine(BaseReasoningEngine):
     
     async def _generate_thoughts(self, content: str) -> List[str]:
         """Generate child thoughts via LLM"""
-        system = "You are a creative problem-solving AI. Return a JSON array of 3 diverse approaches."
+        system = "You are a creative problem-solving AI."
         prompt = f"""Problem: {content}
 
-Return exactly 3 approaches as a JSON array of strings."""
+Provide exactly 3 diverse approaches, one per line prefixed with "- "."""
         
         try:
             if self._llm:
                 provider = self._llm.get_provider()
                 if provider and provider.is_available():
                     response = provider.generate(prompt, system)
-                    import re
-                    match = re.search(r'\[.*\]', response, re.DOTALL)
-                    if match:
-                        thoughts = json.loads(match.group())
-                        if isinstance(thoughts, list):
-                            return thoughts[:3]
-                    return [line.strip() for line in response.split('\n') if line.strip()][:3]
+                    thoughts = []
+                    for line in response.split('\n'):
+                        line = line.strip()
+                        if line.startswith('-'):
+                            thoughts.append(line[1:].strip())
+                        elif line.startswith('1.') or line.startswith('1)'):
+                            thoughts.append(line[2:].strip())
+                        elif line.startswith('2.') or line.startswith('2)'):
+                            thoughts.append(line[2:].strip())
+                        elif line.startswith('3.') or line.startswith('3)'):
+                            thoughts.append(line[2:].strip())
+                    if len(thoughts) >= 3:
+                        return thoughts[:3]
+                    if len(thoughts) >= 1:
+                        while len(thoughts) < 3:
+                            thoughts.append(f"Approach: {content}")
+                        return thoughts
         except Exception as e:
             logger.warning(f"LLM failed, using fallback: {e}")
         
@@ -432,8 +442,15 @@ class PoTEngine(BaseReasoningEngine):
                     prompt = f"""Write Python code to solve:
 {problem}
 
-Output only the Python code:"""
-                    return provider.generate(prompt, system)
+Output only the Python code (no markdown, no backticks):"""
+                    code = provider.generate(prompt, system)
+                    # Clean markdown formatting
+                    import re
+                    code = re.sub(r'^```python\s*', '', code)
+                    code = re.sub(r'^```\s*', '', code)
+                    code = re.sub(r'\s*```$', '', code)
+                    code = code.strip()
+                    return code
         except Exception as e:
             logger.warning(f"LLM code gen failed: {e}")
         return f"# Solution for: {problem}\nprint('Result')"
@@ -473,7 +490,7 @@ class VoyagerEngine(BaseReasoningEngine):
         )
     
     async def _solve_with_experience(self, problem: str, experiences: List[Dict]) -> str:
-        """Solve using LLM with experience context"""
+        """Solve using LLM with experience context - with rate limit handling"""
         try:
             if self._llm:
                 provider = self._llm.get_provider()
@@ -486,7 +503,10 @@ class VoyagerEngine(BaseReasoningEngine):
 {context}
 
 Provide a solution using your experience:"""
-                    return provider.generate(prompt, system)
+                    result = provider.generate(prompt, system)
+                    if "Error: 429" in result or "rate limit" in result.lower():
+                        return f"Solution: {problem[:30]}... (rate limited)"
+                    return result
         except Exception as e:
             logger.warning(f"LLM solve failed: {e}")
         return f"Solution for: {problem[:50]}..."

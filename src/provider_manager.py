@@ -246,7 +246,8 @@ class ProviderManager:
         data = self.storage.load()
         
         for config in PROVIDER_CONFIGS.values():
-            stored_key = data.get(config.id, {}).get("api_key")
+            stored_data = data.get(config.id, {})
+            stored_key = stored_data.get("api_key")
             env_key = os.environ.get(config.api_key_env)
             
             provider = Provider(
@@ -254,8 +255,9 @@ class ProviderManager:
                 name=config.name,
                 api_key=stored_key or env_key or "",
                 base_url=config.base_url,
-                enabled=data.get(config.id, {}).get("enabled", True),
-                models=data.get(config.id, {}).get("models", [])
+                enabled=stored_data.get("enabled", True),
+                models=stored_data.get("models", []),
+                selected_model=stored_data.get("selected_model") or config.default_model
             )
             
             if provider.has_api_key():
@@ -272,12 +274,13 @@ class ProviderManager:
             self.providers[provider_id].api_key = api_key
             self.providers[provider_id].status = ProviderStatus.UNAVAILABLE
         
-        # Save to storage
+        provider = self.providers[provider_id]
         data = self.storage.load()
         data[provider_id] = {
             "api_key": api_key,
-            "enabled": self.providers[provider_id].enabled,
-            "models": self.providers[provider_id].models
+            "enabled": provider.enabled,
+            "models": provider.models,
+            "selected_model": provider.selected_model
         }
         
         return self.storage.save(data)
@@ -555,20 +558,37 @@ class ProviderManager:
         
         provider = self.providers[provider_id]
         
-        # Setze Environment Variables für llm_provider
         os.environ["LLM_PROVIDER"] = provider_id
         os.environ["LLM_URL"] = provider.base_url or ""
         
-        if provider.models:
-            os.environ["LLM_MODEL"] = provider.models[0]
+        selected = provider.get_selected_model()
+        if selected:
+            os.environ["LLM_MODEL"] = selected
         
-        # Setze API Key
         if provider.api_key:
             env_key_var = PROVIDER_CONFIGS.get(provider_id, ProviderConfig("", "", "", "", "")).api_key_env
             if env_key_var:
                 os.environ[env_key_var] = provider.api_key
         
         return True
+    
+    def set_selected_model(self, provider_id: str, model: str) -> bool:
+        """Setze ausgewähltes Modell für Provider"""
+        if provider_id not in self.providers:
+            return False
+        
+        provider = self.providers[provider_id]
+        provider.selected_model = model
+        
+        data = self.storage.load()
+        if provider_id not in data:
+            data[provider_id] = {}
+        data[provider_id]["selected_model"] = model
+        data[provider_id]["api_key"] = provider.api_key
+        data[provider_id]["enabled"] = provider.enabled
+        data[provider_id]["models"] = provider.models
+        
+        return self.storage.save(data)
     
     def to_dict(self) -> Dict:
         """Export für UI"""
@@ -580,7 +600,8 @@ class ProviderManager:
                 "latencyMs": round(p.latency_ms, 0) if p.latency_ms < 999999 else None,
                 "lastCheck": p.last_check,
                 "models": p.models[:10] if p.models else [],
-                "enabled": p.enabled
+                "enabled": p.enabled,
+                "selected_model": p.get_selected_model()
             }
             for pid, p in self.providers.items()
         }

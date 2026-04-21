@@ -31,6 +31,20 @@ def _get_api_key(provider_id: str, fallback_key: str = None) -> str:
     return fallback_key or os.environ.get(f"{provider_id.upper()}_API_KEY", "")
 
 
+def _get_selected_model(provider_id: str, default_model: str = None) -> str:
+    """Hole ausgewähltes Modell aus provider_manager"""
+    if _PROVIDER_MANAGER_AVAILABLE:
+        try:
+            pm = get_provider_manager()
+            if provider_id in pm.providers:
+                model = pm.providers[provider_id].get_selected_model()
+                if model:
+                    return model
+        except Exception as e:
+            logger.debug(f"Could not get model from provider_manager: {e}")
+    return default_model or ""
+
+
 class LLMProvider(ABC):
     """Abstrakte Basisklasse für LLM Provider"""
 
@@ -284,11 +298,11 @@ class OpenRouterProvider(LLMProvider):
     def __init__(
         self,
         api_key: str = None,
-        model: str = "openai/gpt-3.5-turbo",
+        model: str = None,
         timeout: int = 60
     ):
         self.api_key = _get_api_key("openrouter", api_key)
-        self.model = model
+        self.model = model or _get_selected_model("openrouter", "openai/gpt-3.5-turbo")
         self.base_url = "https://openrouter.ai/api/v1"
         self.timeout = timeout
         self._session = requests.Session()
@@ -296,73 +310,15 @@ class OpenRouterProvider(LLMProvider):
         self._session.timeout = timeout
 
     def generate(self, prompt: str, system_prompt: str = None, **kwargs) -> str:
-        """Generiere Antwort über OpenRouter"""
         if not self.api_key:
             return "Error: OpenRouter API key not configured"
-
-        try:
-            messages = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            messages.append({"role": "user", "content": prompt})
-
-            payload = {
-                "model": kwargs.get("model", self.model),
-                "messages": messages,
-                "temperature": kwargs.get("temperature", 0.7),
-                "max_tokens": kwargs.get("max_tokens", 2000)
-            }
-
-            response = self._session.post(
-                f"{self.base_url}/chat/completions",
-                json=payload
-            )
-
-            if response.status_code == 200:
-                return response.json()["choices"][0]["message"]["content"].strip()
-            else:
-                logger.error(f"OpenRouter error: {response.status_code}")
-                return f"Error: {response.status_code}"
-
-        except Exception as e:
-            logger.error(f"OpenRouter call failed: {e}")
-            return f"Error: {str(e)}"
-
-    def is_available(self) -> bool:
-        """Prüfe ob OpenRouter verfügbar ist"""
-        if not self.api_key:
-            return False
-        return True
-
-    def get_name(self) -> str:
-        return "openrouter"
-
-    def get_default_model(self) -> str:
-        return self.model
-
-
-class GroqProvider(LLMProvider):
-    """Groq - Schnelle GPU-Inferenz"""
-
-    def __init__(self, api_key=None, model="llama-3.3-70b-versatile", timeout=60):
-        self.api_key = _get_api_key("groq", api_key)
-        self.model = model
-        self.base_url = "https://api.groq.com/openai/v1"
-        self.timeout = timeout
-        self._session = requests.Session()
-        self._session.headers.update({"Authorization": f"Bearer {self.api_key}"})
-        self._session.timeout = timeout
-
-    def generate(self, prompt: str, system_prompt: str = None, **kwargs) -> str:
-        if not self.api_key:
-            return "Error: Groq API key not configured"
         try:
             messages = []
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
             messages.append({"role": "user", "content": prompt})
             payload = {
-                "model": kwargs.get("model", self.model),
+                "model": kwargs.get("model") or self.model,
                 "messages": messages,
                 "temperature": kwargs.get("temperature", 0.7),
                 "max_tokens": kwargs.get("max_tokens", 2000)
@@ -378,6 +334,50 @@ class GroqProvider(LLMProvider):
         return bool(self.api_key)
 
     def get_name(self) -> str:
+        return "openrouter"
+
+    def get_default_model(self) -> str:
+        return self.model
+
+
+class GroqProvider(LLMProvider):
+    """Groq - Schnelle GPU-Inferenz"""
+
+    def __init__(self, api_key=None, model=None, timeout=60):
+        self.api_key = _get_api_key("groq", api_key)
+        self.model = model or _get_selected_model("groq", "llama-3.3-70b-versatile")
+        self.base_url = "https://api.groq.com/openai/v1"
+        self.timeout = timeout
+        self._session = requests.Session()
+        self._session.headers.update({"Authorization": f"Bearer {self.api_key}"})
+        self._session.timeout = timeout
+
+    def generate(self, prompt: str, system_prompt: str = None, **kwargs) -> str:
+        if not self.api_key:
+            return "Error: Groq API key not configured"
+        try:
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
+            model = kwargs.get("model") or self.model
+            payload = {
+                "model": model,
+                "messages": messages,
+                "temperature": kwargs.get("temperature", 0.7),
+                "max_tokens": kwargs.get("max_tokens", 2000)
+            }
+            response = self._session.post(f"{self.base_url}/chat/completions", json=payload)
+            if response.status_code == 200:
+                return response.json()["choices"][0]["message"]["content"].strip()
+            return f"Error: {response.status_code} - {response.text[:200]}"
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def is_available(self) -> bool:
+        return bool(self.api_key)
+
+    def get_name(self) -> str:
         return "groq"
 
     def get_default_model(self) -> str:
@@ -385,9 +385,9 @@ class GroqProvider(LLMProvider):
 
 
 class HuggingFaceProvider(LLMProvider):
-    """Hugging Face - Open Source Models"""
+    """Hugging Face - Inference Endpoints (requires paid subscription)"""
 
-    def __init__(self, api_key=None, model="google/flan-t5-base", timeout=60):
+    def __init__(self, api_key=None, model=None, timeout=60):
         self.api_key = _get_api_key("huggingface", api_key)
         self.model = model
         self.task = "text-generation"
@@ -400,10 +400,10 @@ class HuggingFaceProvider(LLMProvider):
     def generate(self, prompt: str, system_prompt: str = None, **kwargs) -> str:
         if not self.api_key:
             return "Error: HuggingFace API key not configured"
+        if not self.model:
+            return "Error: No model selected"
         try:
-            # Use the Inference API - proper endpoint format
-            url = f"{self.base_url}/pipeline/{self.task}/{self.model}"
-            
+            url = f"{self.base_url}/models/{self.model}"
             payload = {
                 "inputs": prompt,
                 "parameters": {
@@ -416,7 +416,6 @@ class HuggingFaceProvider(LLMProvider):
                 "Content-Type": "application/json"
             }
             response = requests.post(url, json=payload, headers=headers, timeout=60)
-            
             if response.status_code == 200:
                 result = response.json()
                 if isinstance(result, list) and len(result) > 0:
@@ -429,7 +428,7 @@ class HuggingFaceProvider(LLMProvider):
             return f"Error: {str(e)}"
 
     def is_available(self) -> bool:
-        return bool(self.api_key)
+        return bool(self.api_key and self.model)
 
     def get_name(self) -> str:
         return "huggingface"
@@ -560,9 +559,9 @@ class CohereProvider(LLMProvider):
 class MistralProvider(LLMProvider):
     """Mistral AI"""
 
-    def __init__(self, api_key=None, model="mistral-large-latest", timeout=60):
+    def __init__(self, api_key=None, model=None, timeout=60):
         self.api_key = _get_api_key("mistral", api_key)
-        self.model = model
+        self.model = model or _get_selected_model("mistral", "mistral-large-latest")
         self.base_url = "https://api.mistral.ai/v1"
         self.timeout = timeout
         self._session = requests.Session()
@@ -575,7 +574,7 @@ class MistralProvider(LLMProvider):
         try:
             messages = [{"role": "user", "content": prompt}]
             payload = {
-                "model": kwargs.get("model", self.model),
+                "model": kwargs.get("model") or self.model,
                 "messages": messages,
                 "temperature": kwargs.get("temperature", 0.7),
                 "max_tokens": kwargs.get("max_tokens", 2000)
@@ -664,7 +663,19 @@ class LLMProviderFactory:
             return None
 
         provider_class = cls.PROVIDERS[provider_name]
-        return provider_class(**(config or {}))
+        
+        # Filter config to only include valid params
+        import inspect
+        sig = inspect.signature(provider_class.__init__)
+        valid_params = set(sig.parameters.keys()) - {'self'}
+        
+        filtered_config = {}
+        if config:
+            for k, v in config.items():
+                if k in valid_params:
+                    filtered_config[k] = v
+        
+        return provider_class(**filtered_config)
 
     @classmethod
     def get_available_providers(cls) -> List[str]:
@@ -708,52 +719,57 @@ class LLMProviderManager:
         # Override with environment variables for runtime flexibility
         # LLM_URL: The base URL for the LLM API (e.g., http://localhost:11434)
         # LLM_MODEL: The model name to use (e.g., llama3.2, gpt-4, etc.)
-        # LLM_PROVIDER: The provider type (ollama, openai, anthropic, openrouter)
+        # LLM_PROVIDER: The provider type (ollama, openai, anthropic, openrouter, groq, mistral)
         # LLM_API_KEY: API key for cloud providers
 
         if "providers" not in config:
             config["providers"] = {}
 
-        # Environment variable overrides for Ollama
+        # Environment variable overrides
         llm_url = os.environ.get("LLM_URL")
         llm_model = os.environ.get("LLM_MODEL")
         llm_provider = os.environ.get("LLM_PROVIDER", "ollama")
         llm_api_key = os.environ.get("LLM_API_KEY")
 
-        if llm_url or llm_model:
-            # Use environment variables to configure provider
-            if "ollama" not in config["providers"]:
-                config["providers"]["ollama"] = {}
-
-            if llm_url:
-                config["providers"]["ollama"]["url"] = llm_url
-            if llm_model:
-                config["providers"]["ollama"]["model"] = llm_model
-
-            # Set as default if not already set
-            if "default_provider" not in config:
-                config["default_provider"] = llm_provider
-
-        # Apply API key from environment
-        if llm_api_key:
-            for provider_name in ["openai", "anthropic", "openrouter"]:
+        # Apply API key from environment for all known providers
+        for provider_name in ["openai", "anthropic", "openrouter", "groq", "mistral", "huggingface", "togetherai", "deepinfra", "cohere", "google"]:
+            env_key = f"{provider_name.upper()}_API_KEY"
+            api_key = os.environ.get(env_key)
+            if api_key:
                 if provider_name not in config["providers"]:
                     config["providers"][provider_name] = {}
-                config["providers"][provider_name]["api_key"] = llm_api_key
+                config["providers"][provider_name]["api_key"] = api_key
 
-        # Set default provider from environment if specified
-        if llm_provider and "default_provider" not in config:
+        # Set default provider and URL from environment
+        if llm_provider:
+            if llm_provider not in config["providers"]:
+                config["providers"][llm_provider] = {}
+            if llm_url:
+                config["providers"][llm_provider]["base_url"] = llm_url
+            if llm_model:
+                config["providers"][llm_provider]["model"] = llm_model
             config["default_provider"] = llm_provider
-
-        # Ensure default provider is set
-        if "default_provider" not in config:
+        elif "default_provider" not in config:
             config["default_provider"] = "ollama"
 
         return config
 
     def _initialize_provider(self):
-        """Initialisiere den aktuellen Provider"""
+        """Initialisiere den aktuellen Provider mit selected_model"""
         provider_config = self._config.get("providers", {}).get(self._provider_name, {})
+        
+        selected_model = None
+        if _PROVIDER_MANAGER_AVAILABLE:
+            try:
+                pm = get_provider_manager()
+                if self._provider_name in pm.providers:
+                    selected_model = pm.providers[self._provider_name].get_selected_model()
+            except Exception:
+                pass
+        
+        if selected_model:
+            provider_config["model"] = selected_model
+        
         self._current_provider = LLMProviderFactory.create(self._provider_name, provider_config)
 
     def get_provider(self) -> Optional[LLMProvider]:
@@ -761,7 +777,6 @@ class LLMProviderManager:
         if self._current_provider and self._current_provider.is_available():
             return self._current_provider
         
-        # Fallback: versuche alle Provider durch
         for provider_name in LLMProviderFactory.PROVIDERS.keys():
             provider = LLMProviderFactory.create(provider_name, {})
             if provider and provider.is_available():

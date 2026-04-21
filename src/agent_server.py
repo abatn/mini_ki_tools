@@ -262,11 +262,22 @@ async def llm_providers():
 
 @app.post("/api/llm/switch")
 async def switch_llm(request: Dict):
-    pm = get_provider_manager()
     provider_id = request.get("provider_id", "")
-    if provider_id in pm.providers:
-        pm.providers[provider_id].enabled = True
-    return {"success": True}
+    if not provider_id:
+        return {"success": False, "error": "provider_id required"}
+    
+    # Enable in provider_manager
+    pm = get_provider_manager()
+    if provider_id not in pm.providers:
+        return {"success": False, "error": f"Provider {provider_id} not found"}
+    pm.providers[provider_id].enabled = True
+    
+    # Switch in llm_provider
+    from llm_provider import get_llm_manager
+    llm_manager = get_llm_manager()
+    success = llm_manager.switch_provider(provider_id)
+    
+    return {"success": success, "provider": provider_id}
 
 # Provider Manager API Keys endpoints
 @app.post("/api/llm/keys")
@@ -335,10 +346,17 @@ async def set_model(request: Dict):
         return {"success": False, "error": "provider_id and model required"}
     
     pm = get_provider_manager()
-    if provider_id in pm.providers:
-        pm.providers[provider_id].selected_model = model
+    if provider_id not in pm.providers:
+        return {"success": False, "error": "Provider not found"}
+    
+    provider = pm.providers[provider_id]
+    current = provider.get_selected_model()
+    
+    if current == model:
         return {"success": True, "selected_model": model}
-    return {"success": False, "error": "Provider not found"}
+    
+    pm.set_selected_model(provider_id, model)
+    return {"success": True, "selected_model": model}
 
 @app.get("/api/llm/models/{provider_id}")
 async def get_provider_models(provider_id: str):
