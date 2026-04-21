@@ -52,6 +52,7 @@ except:
 class Message(BaseModel):
     message: str
     context: Dict = {}
+    mode: str = "tao"  # tao, tot, got, reflexion, plan_solve, pot, voyager
 
 class ChatResponse(BaseModel):
     response: str
@@ -113,6 +114,14 @@ async def health_check():
 # Chat endpoint
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: Message):
+    if request.mode and request.mode != "tao":
+        from reasoning_engine import get_reasoning_engine, ReasoningResult
+        engine = get_reasoning_engine(request.mode)
+        result = await engine.think(request.message, request.context)
+        return ChatResponse(
+            response=result.result or result.thought,
+            history=[{"mode": request.mode, "steps": result.steps}]
+        )
     result, history = agent.process_message(request.message)
     return ChatResponse(response=result, history=history)
 

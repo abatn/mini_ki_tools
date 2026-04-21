@@ -543,6 +543,28 @@ class ProviderManager:
         
         return self.get_fastest_provider()
     
+    def switch_provider(self, provider_id: str) -> bool:
+        """Wechsle zu einem anderen Provider und setze Environment Variables"""
+        if provider_id not in self.providers:
+            return False
+        
+        provider = self.providers[provider_id]
+        
+        # Setze Environment Variables für llm_provider
+        os.environ["LLM_PROVIDER"] = provider_id
+        os.environ["LLM_URL"] = provider.base_url or ""
+        
+        if provider.models:
+            os.environ["LLM_MODEL"] = provider.models[0]
+        
+        # Setze API Key
+        if provider.api_key:
+            env_key_var = PROVIDER_CONFIGS.get(provider_id, ProviderConfig("", "", "", "", "")).api_key_env
+            if env_key_var:
+                os.environ[env_key_var] = provider.api_key
+        
+        return True
+    
     def to_dict(self) -> Dict:
         """Export für UI"""
         return {

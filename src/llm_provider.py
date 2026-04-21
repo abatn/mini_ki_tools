@@ -344,7 +344,7 @@ class OpenRouterProvider(LLMProvider):
 class GroqProvider(LLMProvider):
     """Groq - Schnelle GPU-Inferenz"""
 
-    def __init__(self, api_key=None, model="llama-3.1-70b-versatile", timeout=60):
+    def __init__(self, api_key=None, model="llama-3.3-70b-versatile", timeout=60):
         self.api_key = _get_api_key("groq", api_key)
         self.model = model
         self.base_url = "https://api.groq.com/openai/v1"
@@ -357,7 +357,10 @@ class GroqProvider(LLMProvider):
         if not self.api_key:
             return "Error: Groq API key not configured"
         try:
-            messages = [{"role": "user", "content": prompt}]
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
             payload = {
                 "model": kwargs.get("model", self.model),
                 "messages": messages,
@@ -384,9 +387,10 @@ class GroqProvider(LLMProvider):
 class HuggingFaceProvider(LLMProvider):
     """Hugging Face - Open Source Models"""
 
-    def __init__(self, api_key=None, model="meta-llama/Llama-3.2-1B-Instruct", timeout=60):
+    def __init__(self, api_key=None, model="google/flan-t5-base", timeout=60):
         self.api_key = _get_api_key("huggingface", api_key)
         self.model = model
+        self.task = "text-generation"
         self.base_url = "https://api-inference.huggingface.co"
         self.timeout = timeout
         self._session = requests.Session()
@@ -397,23 +401,30 @@ class HuggingFaceProvider(LLMProvider):
         if not self.api_key:
             return "Error: HuggingFace API key not configured"
         try:
+            # Use the Inference API - proper endpoint format
+            url = f"{self.base_url}/pipeline/{self.task}/{self.model}"
+            
             payload = {
                 "inputs": prompt,
                 "parameters": {
-                    "max_new_tokens": kwargs.get("max_tokens", 500),
-                    "temperature": kwargs.get("temperature", 0.7),
-                    "return_full_text": False
+                    "max_new_tokens": kwargs.get("max_tokens", 200),
+                    "temperature": kwargs.get("temperature", 0.7)
                 }
             }
-            response = self._session.post(
-                f"{self.base_url}/pipeline/tasks/text-generation/{self.model}",
-                json=payload
-            )
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            response = requests.post(url, json=payload, headers=headers, timeout=60)
+            
             if response.status_code == 200:
                 result = response.json()
                 if isinstance(result, list) and len(result) > 0:
                     return result[0].get("generated_text", "").strip()
-            return f"Error: {response.status_code} - {response.text[:100]}"
+                elif isinstance(result, dict) and "generated_text" in result:
+                    return result["generated_text"].strip()
+                return str(result)[:200]
+            return f"Error: {response.status_code} - {response.text[:200]}"
         except Exception as e:
             return f"Error: {str(e)}"
 

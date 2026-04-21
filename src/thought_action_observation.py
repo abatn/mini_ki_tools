@@ -16,7 +16,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Import LLM Provider (zentrale Abstraktion)
-from llm_provider import get_llm_manager, LLMProvider
+from llm_provider import LLMProviderFactory, LLMProvider
 
 
 class ToolName(Enum):
@@ -98,8 +98,7 @@ if __name__ == "__main__":
         self,
         model: str = None,
         max_iterations: int = 10,
-        timeout: int = 30,
-        llm_manager: LLMProvider = None
+        timeout: int = 30
     ):
         # Get model from environment variable or use provider's default
         # This ensures central configuration through LLM_MODEL env var
@@ -113,25 +112,44 @@ if __name__ == "__main__":
         self._session = requests.Session()
         self._session.timeout = timeout
         self.history: List[TAOState] = []
-        self._llm_manager = llm_manager or get_llm_manager()
         self._fallback_tool_call = None  # For fallback mode direct execution
         
         # Resolve model after provider is initialized
         if self.model is None:
-            provider = self._llm_manager.get_provider()
-            if provider:
-                self.model = provider.get_default_model()
+            try:
+                from llm_provider import get_llm_manager
+                llm = get_llm_manager()
+                provider = llm.get_provider()
+                if provider:
+                    self.model = provider.get_default_model()
+            except Exception:
+                pass  # Will be resolved on first call
     
     def _check_llm_available(self) -> bool:
         """Check if LLM provider is available"""
-        provider = self._llm_manager.get_provider()
-        if provider:
-            return provider.is_available()
-        return False
+        try:
+            from llm_provider import get_llm_manager
+            llm = get_llm_manager()
+            provider = llm.get_provider()
+            return provider is not None
+        except Exception:
+            return False
     
     def _call_llm(self, prompt: str, system_prompt: str = None) -> str:
-        """Ruft LLM Provider auf (zentrale Abstraktion)"""
-        return self._llm_manager.generate(prompt, system_prompt, model=self.model)
+        """Ruft LLM Provider auf via llm_provider (mit Bridge zu provider_manager)"""
+        try:
+            from llm_provider import get_llm_manager
+            llm = get_llm_manager()
+            provider = llm.get_provider()
+            
+            if provider and provider.is_available():
+                return provider.generate(prompt, system_prompt)
+            elif provider:
+                return provider.generate(prompt, system_prompt)
+            else:
+                return "Error: No LLM provider available"
+        except Exception as e:
+            return f"Error: {str(e)}"
     
     def _parse_tool_calls(self, response: str) -> List[ToolCall]:
         """Parse Tool-Aufrufe aus LLM-Response"""
@@ -285,28 +303,16 @@ if __name__ == "__main__":
         if not self._check_llm_available():
             return f"DIRECT_ANSWER: LLM not available. Please check your configuration."
         
-        system_prompt = """You are an AI assistant that analyzes user requests and decides how to respond.
+        system_prompt = """You are an AI assistant.
 
-DECISION RULE:
-- If the request is purely conversational (greetings like "hallo", "hi", "hello", thanks, apologies, small talk, general knowledge questions without code/file context), respond DIRECTLY without tools
-- If the request involves code, files, web searches, or actual work, use appropriate tools
-
-Available tools:
-- write_file(filename, content): Write content to a file
-- read_file(filename): Read content from a file
-- execute_code(code): Execute Python code
-- read_csv(filename): Read CSV file
-- http_request(url): Make HTTP request
-- run_command(command): Run terminal command
-
-Response format - CHOOSE ONE:
+RESPONSE FORMAT - You MUST follow exactly:
 
 1. For conversational requests (greetings, thanks, simple questions):
-DIRECT_ANSWER: <your friendly response>
+DIRECT_ANSWER: <your response>
 
-2. For tool-requiring requests:
-THOUGHT: <your analysis>
-ACTIONS: <tool calls in format tool_name("arg1", "arg2")>"""
+2. For requests needing tools (code, files, web):
+THOUGHT: <analysis>
+ACTIONS: <tool_name("arg1", "arg2")>"""
         
         history_context = f"\nPrevious context: {context}" if context else ""
         prompt = f"""User request: {user_input}{history_context}
@@ -322,7 +328,10 @@ Analyze the request and decide: Does this require tools (code, files, web)? Or i
 If conversational (greeting, thanks, simple question), respond: DIRECT_ANSWER: <response>
 If it needs work, respond: ACTIONS: """
             
-            response = self._llm_manager.generate(user_input, simple_system, model=self.model)
+            from llm_provider import get_llm_manager
+            llm = get_llm_manager()
+            provider = llm.get_provider()
+            response = provider.generate(user_input, simple_system, model=self.model) if provider else "Error: No provider"
             
             if response and "DIRECT_ANSWER:" in response:
                 return response
@@ -399,6 +408,7 @@ ACTIONS: write_file("{filename}", "...")"""
             
             thought = self.think(user_input, context)
             
+            # Check for DIRECT_ANSWER prefix
             if thought.startswith("DIRECT_ANSWER:"):
                 direct_answer = thought[len("DIRECT_ANSWER:"):].strip()
                 state = TAOState(
@@ -411,7 +421,20 @@ ACTIONS: write_file("{filename}", "...")"""
                 self.history.append(state)
                 return direct_answer, self.history
             
-            tool_calls = self.act(thought)
+            # Check if response needs tools
+            if "ACTIONS:" in thought:
+                tool_calls = self.act(thought)
+            else:
+                # It's a conversational response - use it directly
+                state = TAOState(
+                    iteration=i,
+                    thought=thought,
+                    tool_calls=[],
+                    observations=[]
+                )
+                state.final_result = thought.strip()
+                self.history.append(state)
+                return thought.strip(), self.history
             observation = self.observe(tool_calls)
             
             state = TAOState(
