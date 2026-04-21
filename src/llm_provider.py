@@ -401,16 +401,19 @@ class HuggingFaceProvider(LLMProvider):
                 "inputs": prompt,
                 "parameters": {
                     "max_new_tokens": kwargs.get("max_tokens", 500),
-                    "temperature": kwargs.get("temperature", 0.7)
+                    "temperature": kwargs.get("temperature", 0.7),
+                    "return_full_text": False
                 }
             }
             response = self._session.post(
-                f"{self.base_url}/models/{self.model}",
+                f"{self.base_url}/pipeline/tasks/text-generation/{self.model}",
                 json=payload
             )
             if response.status_code == 200:
-                return response.json()[0].get("generated_text", "").strip()
-            return f"Error: {response.status_code}"
+                result = response.json()
+                if isinstance(result, list) and len(result) > 0:
+                    return result[0].get("generated_text", "").strip()
+            return f"Error: {response.status_code} - {response.text[:100]}"
         except Exception as e:
             return f"Error: {str(e)}"
 
@@ -743,7 +746,19 @@ class LLMProviderManager:
         self._current_provider = LLMProviderFactory.create(self._provider_name, provider_config)
 
     def get_provider(self) -> Optional[LLMProvider]:
-        """Gib den aktuellen Provider zurück"""
+        """Gib den aktuellen Provider zurück, wechsle falls nicht verfügbar"""
+        if self._current_provider and self._current_provider.is_available():
+            return self._current_provider
+        
+        # Fallback: versuche alle Provider durch
+        for provider_name in LLMProviderFactory.PROVIDERS.keys():
+            provider = LLMProviderFactory.create(provider_name, {})
+            if provider and provider.is_available():
+                logger.info(f"Falling back to available provider: {provider_name}")
+                self._provider_name = provider_name
+                self._current_provider = provider
+                return self._current_provider
+        
         return self._current_provider
 
     def get_current_provider_name(self) -> str:
