@@ -1,0 +1,18 @@
+## Gelöst: Frontend API Keys Network Error
+
+**Ursache:** Statischer API_URL (localhost:8001) unterschiedlich vom Browser-Origin
+
+**Lösung:**
+- Frontend verwendet jetzt dynamischen API_URL: `window.location.host`
+- CORS-Problem behoben, da Origin = API-URL
+
+**Änderungen in App.js:**
+```javascript
+const API_URL = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.host}`;
+```
+
+**Getestet:**
+- POST /api/llm/keys → {"success":true}
+- POST /api/llm/keys/test → validierte Models
+
+**Bestätigung:** NETWORK ERROR BEHOBEN

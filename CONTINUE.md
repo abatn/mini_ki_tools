@@ -877,3 +877,28 @@ result = await tool.execute_async(agent_name, filename, ...)
 - ✅ ROOT GIBT HTML ZURÜCK
 - ✅ STATIC FILES FUNKTIONIEREN (267KB JS, 21KB CSS)
 - ✅ PYTHON 3.9 KOMPATIBLE TYPE HINTS
+
+### 16. Interaktive Provider API-Key Verwaltung
+- **Datum**: April 2026
+- **Problem**: Provider-Liste war statisch, keine Möglichkeit API-Keys einzugeben
+- **Lösung**:
+  - Neue Backend-Endpoints für Key-Management
+  - Accordion-UI für jeden Provider mit Input/Buttons
+- **Backend-Endpoints**:
+  - `POST /api/llm/keys` - Speichert API-Key verschlüsselt
+  - `POST /api/llm/keys/test` - Validiert Key, gibt Latenz + Models
+  - `DELETE /api/llm/keys/{provider_id}` - Entfernt Key
+- **Frontend-Features**:
+  - Accordion pro Provider (klick zum Aufklappen)
+  - Input-Feld (type="password") für API-Key
+  - 🧪 Test Button → validiert Key mit Latenz-Messung
+  - 💾 Speichern Button → verschlüsselt im Backend
+  - 🗑️ Entfernen Button (nur wenn Key existiert)
+  - Model-Dropdown nach erfolgreichem Test
+- **Verschlüsselung**: API-Keys werden mit Fernet verschlüsselt gespeichert
+
+### Bestätigungen
+- ✅ API KEY ENDPOINTS IMPLEMENTIERT
+- ✅ ACCORDION UI FUNKTIONIERT
+- ✅ KEY VALIDIERUNG MIT MODELLISTE
+- ✅ ENCRYPTED STORAGE

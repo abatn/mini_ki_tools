@@ -26,14 +26,14 @@ test*.txt
 fibonacci.py
 hello.py
 # Frontend build und dependencies
-frontend/build/
+#frontend/build/
 frontend/node_modules/
 node_modules/
 
 # Cache Dateien
 .cache/
 *.cache
-
+frontend/node_modules/.cache/
 # Python
 venv/
 venv_test/

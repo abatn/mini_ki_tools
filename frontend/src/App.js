@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import './App.css';
 import LanguageSelector from './components/LanguageSelector';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001';
+const API_URL = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.host}`;
 
 function App() {
   const { t } = useTranslation();
