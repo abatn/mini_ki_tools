@@ -6,5 +6,5 @@ class Agent:
 
     def process_message(self, message: str):
         result, history = self.tao_loop.run(message)
-        return result, history
+        return result  # Nur den String zurückgeben
         

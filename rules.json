@@ -1,0 +1,14 @@
+{
+  "tools": {
+    "write_file": "allow",
+    "execute_code": "ask",
+    "run_command": "deny",
+    "http_request": "ask",
+    "read_file": "allow"
+  },
+  "directories": ["/workspace/src", "/workspace/tests"],
+  "max_file_size_mb": 10,
+  "agent_name": "default",
+  "task_budget": 10,
+  "allow_subagent": true
+}

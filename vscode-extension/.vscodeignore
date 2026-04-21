@@ -1,0 +1,11 @@
+.vscode/
+node_modules/
+python/
+**/*.pyc
+**/*.pyo
+**/*.so
+**/*.dylib
+**/*.dll
+.git/
+out/test/
+*.vsix
