@@ -48,3 +48,4 @@ __pycache__/
 .DS_Store
 .eslintcache
 *.eslintcache
+task*.txt
