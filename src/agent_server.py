@@ -325,6 +325,34 @@ async def delete_api_key(provider_id: str):
     success = pm.remove_api_key(provider_id)
     return {"success": success}
 
+@app.post("/api/llm/model")
+async def set_model(request: Dict):
+    """Setze das ausgewählte Modell für einen Provider"""
+    provider_id = request.get("provider_id", "")
+    model = request.get("model", "")
+    
+    if not provider_id or not model:
+        return {"success": False, "error": "provider_id and model required"}
+    
+    pm = get_provider_manager()
+    if provider_id in pm.providers:
+        pm.providers[provider_id].selected_model = model
+        return {"success": True, "selected_model": model}
+    return {"success": False, "error": "Provider not found"}
+
+@app.get("/api/llm/models/{provider_id}")
+async def get_provider_models(provider_id: str):
+    """Liste verfügbare Modelle für einen Provider"""
+    pm = get_provider_manager()
+    if provider_id in pm.providers:
+        provider = pm.providers[provider_id]
+        return {
+            "provider": provider_id,
+            "available_models": provider.models,
+            "selected_model": provider.get_selected_model()
+        }
+    return {"error": "Provider not found"}
+
 # Slash Commands endpoints
 @app.post("/api/commands/execute")
 async def execute_command(request: Dict):

@@ -865,3 +865,17 @@ def get_llm_provider() -> Optional[LLMProvider]:
 def generate(prompt: str, system_prompt: str = None, **kwargs) -> str:
     """Generiere LLM Antwort (Convenience-Funktion)"""
     return get_llm_manager().generate(prompt, system_prompt, **kwargs)
+
+
+def get_selected_provider_model() -> tuple:
+    """Get selected model from provider_manager if available"""
+    try:
+        from provider_manager import get_provider_manager
+        pm = get_provider_manager()
+        current_provider = pm.get_current_provider()
+        if current_provider and current_provider.selected_model:
+            return current_provider.id, current_provider.selected_model
+    
+    except Exception:
+        pass
+    return None, None

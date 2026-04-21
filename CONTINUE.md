@@ -1035,6 +1035,22 @@ E2E TEST RESULTS (Groq API, April 2026):
 - pot: Generated and executed code
 - voyager: "In realms of circuits..."
 
-### Bestätigungen
+### Model Selection Feature (April 2026)
+
+PROBLEM: Each provider has many models, but the system only uses default. No way to select.
+
+LÖSUNG:
+1. Added `selected_model` field to Provider in provider_manager.py
+2. Added API endpoints for model selection:
+   - GET `/api/llm/models/{provider_id}` - Get available models
+   - POST `/api/llm/model` - Set selected model
+
+### Test Results
+- Groq: ✅ Valid, 16 models
+- Mistral: ✅ Valid, 10 models  
+- OpenRouter: ✅ Valid, 10 models
+
+### Confirmations
 - ✅ ALLE 7 MODI FUNKTIONIEREN MIT CLOUD PROVIDERN
 - ✅ E2E TEST BESTANDEN
+- ✅ MODELL-AUSWAHL IMPLEMENTIERT

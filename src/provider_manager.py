@@ -43,9 +43,14 @@ class Provider:
     last_check: Optional[str] = None
     models: List[str] = field(default_factory=list)
     enabled: bool = True
+    selected_model: Optional[str] = None
     
     def has_api_key(self) -> bool:
         return bool(self.api_key and len(self.api_key) > 0)
+    
+    def get_selected_model(self) -> str:
+        """Get the selected model or default"""
+        return self.selected_model or (self.models[0] if self.models else "")
 
 
 @dataclass
